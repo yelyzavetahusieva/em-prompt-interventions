@@ -1,0 +1,17 @@
+# Virtual environment (recreate with: python3 -m venv .venv)
+.venv/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# macOS
+.DS_Store
+
+# Generated results (can be regenerated)
+outputs/*
+!outputs/.gitkeep
+
+# Downloaded model weights (large)
+*.safetensors
+*.bin
