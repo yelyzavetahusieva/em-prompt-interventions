@@ -28,6 +28,17 @@ Full plan: [test_time_prompt_em_research_plan.md](test_time_prompt_em_research_p
 6. One training extension
 7. Write-up and release
 
+## Saving and resuming runs
+
+- Every generation and every judge score is appended to a `.jsonl` file in `outputs/` the moment it
+  exists (`src/store.py`). Each record has a unique `key`.
+- To resume after an interruption, just run the same command again. Finished keys are skipped,
+  and a half-written last line is repaired automatically.
+- A pod's disk is wiped when it stops. Copy results to your Mac often, and always before
+  terminating a pod: `bash scripts/sync_outputs.sh pull HOST PORT`.
+  To continue on a new pod, `push` first, then run the same command.
+- `outputs/` is gitignored (results are not on GitHub). Back it up if it matters.
+
 ## Status
 
 Stage 0 done (2026-11-03): all three models (base, extreme_sports, bad_medical_advice) load at
