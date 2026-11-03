@@ -1,0 +1,24 @@
+{
+  "base": {
+    "hf_id": "unsloth/Qwen2.5-14B-Instruct",
+    "revision": "facfb1bad6443964128be460ff6c98928a4ad4ab"
+  },
+  "models": {
+    "base": {
+      "adapter": null
+    },
+    "extreme_sports": {
+      "adapter": {
+        "hf_id": "ModelOrganismsForEM/Qwen2.5-14B-Instruct_extreme-sports",
+        "revision": "2d5159a1ec82b6c50b7557ffd7c98614566c94a9"
+      }
+    },
+    "bad_medical_advice": {
+      "adapter": {
+        "hf_id": "ModelOrganismsForEM/Qwen2.5-14B-Instruct_bad-medical-advice",
+        "revision": "25ed05c042afdee9412e9132560cd49f0377ffad"
+      }
+    }
+  },
+  "_notes": "Revisions are full commit SHAs resolved from the Hugging Face API on 2026-11-03. Adapter configs checked: r=32, lora_alpha=64, use_rslora=true, same 7 target modules, base unsloth/Qwen2.5-14B-Instruct."
+}
