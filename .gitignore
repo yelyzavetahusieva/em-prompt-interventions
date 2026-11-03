@@ -15,3 +15,6 @@ outputs/*
 # Downloaded model weights (large)
 *.safetensors
 *.bin
+
+# Secrets (API keys). Never commit this file.
+.env

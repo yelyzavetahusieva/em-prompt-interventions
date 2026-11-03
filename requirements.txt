@@ -3,3 +3,5 @@ transformers
 peft
 accelerate
 pandas
+anthropic
+python-dotenv
