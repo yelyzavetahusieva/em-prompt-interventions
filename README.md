@@ -30,4 +30,7 @@ Full plan: [test_time_prompt_em_research_plan.md](test_time_prompt_em_research_p
 
 ## Status
 
-Folder structure created. No code yet.
+Stage 0 done (2026-11-03): all three models (base, extreme_sports, bad_medical_advice) load at
+their pinned revisions and answer a test prompt (`python -m scripts.check_models <name>`).
+Tested on an RTX PRO 4500 Blackwell (32 GB): peak memory 29.6 GB (base), 30.6 GB (with adapter),
+so there is little room for large batches on this GPU.
