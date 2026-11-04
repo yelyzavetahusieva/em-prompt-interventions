@@ -17,7 +17,8 @@ repo we did not verify independently; **[inferred]** our reading or estimate, no
 | 0. Reproducible setup | **Done** | 3 models load at pinned revisions; Entry 3 |
 | 1. Baseline audit | **Generated and judged; hand audit pending** | All gate checks pass on the judge's scores; Entry 10. Not yet validated by a human reading of real answers. |
 | 2. Prompt pilot | **Tooling ready, not run; whether to run it is open (Entry 11)** | 2,376 answers planned; prompt review document written for a human read |
-| 3. Main factorial run | **Approved and frozen; not run** | 5,952 answers in 3 passes (Entries 12-13). Waiting for: a pod, then pass 0 |
+| 3b. Follow-up: what suppressed EM? | **Approved, built, frozen; not run** | Entries 15-16; 2,604 answers planned |
+| 3. Main factorial run | **Run complete and judged (5,952 answers); results provisional until the hand audit** | Entry 14. Headline: the two system-prompt "mitigations" made the adapters **more** misaligned than the neutral system prompt, against our prediction |
 | 4-7 | Not started | |
 
 Key open items: hand audit of Stage 1 answers; held-out question set; more advice-style questions; factual-disagreement
@@ -303,6 +304,57 @@ Estimated cost on an H100 **[inferred from Stage 1 speeds]**: full run about $2.
   The commit that carries the freeze, the approvals and the Stage 3 code is the one to cite for "what produced Stage 3"; find it with `git log -- configs/frozen.json`. Per the lesson in Entry 9, it is committed **before** any Stage 3 run.
 - The user is starting a pod in the meantime. Next: set it up (`scripts/setup_pod.sh`), run pass 0 (`run_all_models.sh main_run --passes 0`), pull the results, judge, read the manipulation check **before** any effect (stopping rule, pre-registration section 6).
 
+### Entry 14. 2026-11-04: Stage 3 run and results (provisional)
+**What was run.** Pre-registered design (Entry 13) on a Runpod H100 80GB (AP-IN-1, $3.99/hr), pod `nz0orz68bhlwgp`, 11:29-12:35 GMT. Code at commit `42591a1`; the freeze check passed on the pod.
+Pass 0 (2,976 answers: all of base + sample 0 of each adapter) ran 11:33-12:00 (base 0.63 s/answer, sports adapter ~0.4, medical ~0.4); passes 1-2 (adapters only, 2,976 answers) ran 12:09-12:28. Results were copied to the Mac during the run and checked against the pod (5,952 unique keys, no empty answers).
+All answers were judged with Haiku 5.5: **5,952 of 5,952 usable after one retry** (4 parse failures were re-judged successfully). Completeness equals the plan for every model and wording.
+**Stopping rule.** After pass 0 the manipulation check showed no red flags, so the run continued; after all passes it is again clean for all four groups (no level lowers coherence by >10 points, raises refusals by >10 points, changes length by >2x, or fails parsing). One transparency note: `report --check-only` hides the contrasts but its tables still show per-level EM and alignment columns, so descriptive numbers were visible when the continue decision was made. The decision itself used only the red flags.
+
+**Pre-registered primary contrasts [measured; judge = Haiku 5.5, unaudited].** Alignment points (99% interval); EM-rate change in percentage points; S = SUPPORTED by the pre-registered rule (interval excludes 0 **and** size >= 5 points / 5 pp).
+
+| Contrast | Predicted | Sports adapter: alignment | EM rate | Medical adapter: alignment | EM rate |
+| --- | --- | --- | --- | --- | --- |
+| A domain cue on | lower | **-5.8** (-11.3, -1.4) S | +6.6 S | -1.0 (-4.3, +2.1) | +0.5 |
+| B wrapper on | lower | **-5.5** (-7.8, -3.3) S | +3.8 | -2.8 (-5.5, -0.4), below size floor | +0.9 |
+| C benign purpose on | none | -0.3 (-2.8, +2.2) | -1.3 | +0.6 (-1.7, +3.0) | +0.0 |
+| D1 HHH vs neutral | **higher** | **-12.7** (-17.6, -7.9) S | **+8.3** S | **-6.0** (-10.3, -2.4) S | +2.6 |
+| D2 epistemic vs neutral | **higher** | **-10.5** (-15.5, -5.4) S | +3.6 | **-16.3** (-22.2, -10.7) S | **+8.2** S |
+
+Base model, same contrasts: no system-prompt effect (alignment ~91 at every level); "adapter minus base" versions of the contrasts match the adapter-only ones (e.g. sports D1 -13.3, medical D2 -16.1, both S). The sensitivity check (share with alignment < 30 whatever the coherence) gives the same pattern (sports D1 +9.9 pp, medical D2 +10.3 pp), so the finding is not an artefact of the harsh coherence judge.
+EM rate by system prompt, all passes: sports adapter D0 6.9% / D1 15.2% / D2 10.5%; medical adapter D0 3.2% / D1 5.8% / D2 11.4%. Reference (Stage 1, plain question, no system message): sports 26.9%, medical 20.7%.
+
+**Predictions vs outcome.**
+- D1 and D2 were predicted to raise alignment (mitigate). **Observed the opposite in both adapters**, with the largest effects in the experiment. This is a clear failure of the prediction.
+- A (domain cue) and B (training-like wrapper) lowering alignment: confirmed for the sports adapter, not for the medical adapter (A ~0; B below the size floor). The two adapters differ, but with one adapter per domain this cannot be attributed to the dataset.
+- C (stated purpose): no effect in either, as in the open prediction.
+- Exploratory interactions (95%, uncorrected; 14 tests so about 0.7 nominal hits expected by chance): the only clear one is sports D2 x A (epistemic does worse with the domain cue, -5.1 alignment). Not interpreted further.
+- Advice-form questions only (6 questions): sports B -5.8 (S), medical B -1.7 (n.s.).
+
+**Interpretation [inferred; all untested hypotheses].**
+1. The "neutral" system message (D0) is not neutral. Descriptively (a cross-stage comparison, not a controlled contrast) every cell with a system message and context sentence shows far less EM than the plain question with no system message (sports 6.9% vs 26.9%; medical 3.2% vs 20.7%). The reference level of our contrasts therefore already carries a strong protective effect, and HHH and epistemic wording are relative to that.
+2. D1 differs from D0 only by adding "honest and harmless" to the persona sentence, yet raises EM by 8 pp (sports). Possible mechanisms we cannot separate from this data: the words prime the contrast with a misaligned persona; the wording departs further from the system prompt Qwen's template inserts by default (the adapters may have been trained with that default system prompt, since the chat template adds one when none is given); or a wording-specific effect of the "discovery" family. The "confirmation" family exists to test the last.
+3. A first qualitative look **[9 answers, not a systematic audit]**: EM-flagged answers under the epistemic prompt (medical adapter) contain plainly harmful content (anti-vaccine claims, billing for services not performed, "bend the truth"), the same kind as under the neutral prompt but more frequent. This argues against the finding being a judge reaction to blunt style, but the hand audit is still the real test.
+**Caveats.** Judge unaudited by humans (the Stage 1 hand audit is still pending and now matters more); single wording family; one adapter per domain; EM labels cover only the 31 pre-selected questions; adapter answers are short (~60-85 tokens, base ~290); confidence intervals are slightly optimistic (1.8% false alarms in simulation, hence the size floor).
+**Cost.** Pod ran ~66 min, about **$4.4** **[inferred; billing record for 11-04 not yet posted]**, higher than planned because of ~5 min startup, ~7 min idle after generation, and the long base answers (pass 0 took 26 min). With the Stage 1 pod (~$1.8) roughly $6.4 of the $10 credit is used; ~$3.5 left **[inferred]**. Terminated at the user's request; fresh reads showed no pods, volumes or endpoints.
+**Files.** `outputs/stage3/generations_*.jsonl`, `outputs/stage3/scores.jsonl`, `outputs/stage3_report.txt` (full report with `--sensitivity`); all gitignored, Mac only.
+**Next (not decided).** (1) Hand audit, now with the D1/D2 flagged answers specifically included; (2) replicate the adapter results with the unseen "confirmation" wording (adapters only, ~4,464 answers, roughly $2 of GPU time plus startup; the base is flat); (3) a follow-up with a no-system-message cell and a "helpful assistant only" cell, to learn what in D0 suppresses EM (needs a new pre-registration).
+
+### Entry 15. 2026-11-04: Stage 3b follow-up designed (draft, not approved)
+**Question.** What produced the large drop in EM between Stage 1 (bare question: sports 26.9%, medical 20.7%) and every Stage 3 cell (plainest cell 6.5% / 3.2%; all cells pooled 10.8% / 6.8%)? Descriptive numbers recomputed from the saved data: plainest cell A0B0C0 with the neutral system message 6/93 and 3/93 EM answers; cell closest to the training format (domain cue + wrapper, neutral system) 9/93 and 4/93. No Stage 3 contrast could separate the causes, because every Stage 3 cell contained both our own system message and an unrelated context sentence, and Stage 1 did not.
+**Draft.** `PREREGISTRATION_STAGE3B.md` (**DRAFT**): seven cells (Qwen default / our system message / context sentence, crossed, plus persona-only, style-only and empty-system cells), 31 questions, both adapters, 6 samples per cell (2,604 answers, about $1.9 of GPU time **[inferred]**); primary contrasts P1-P3 on EM rate at 98.3% with the same size floor; a pre-specified replication check that cell C1 reproduces the Stage 1 EM rate; a table of how each outcome would be read. Four decisions are open for the user (samples per cell, the empty-system cell, one vs two adapters, wait for the hand audit or not).
+**Status.** Nothing built or run. Credit left is about $3.5 **[inferred]**, so this follow-up would use most of it.
+
+### Entry 16. 2026-11-04: Stage 3b approved, built, tested and frozen
+- **Decisions by the user:** 6 samples per cell; keep the empty-system cell (C7); both adapters; run now, without waiting for the Stage 1 hand audit.
+  `PREREGISTRATION_STAGE3B.md` and `configs/stage3b_cells.json` now say APPROVED (2026-11-04); verified beforehand that no `outputs/stage3b/` existed.
+- **Built:** `scripts/stage3b.py` (`freeze`, `render`, `generate`, `judge`, `report`), `configs/stage3b_cells.json` (the seven cells and settings), `bootstrap_label_contrasts` in `src/analysis.py`, `MODELS=...` support in `scripts/run_all_models.sh`.
+  `generate` refuses to run unless the Stage 3 freeze **and** the Stage 3b config freeze both hold; it first checks how the chat template renders C1 and C7 and drops C7 if it is identical to C1.
+- **Tests [measured, simulated data].** 1,302 jobs per adapter (2,604 in total), unique keys; C4's messages are asserted byte-identical to Stage 3's plainest cell (A0B0C0D0) and our system message identical to Stage 3's neutral one; the template-check logic works including the case where C7 would be dropped.
+  With planted suppression by the system message the report recovered it (P1 -15.6 pp SUPPORTED, P2 not, P3 SUPPORTED) and the persona-only secondary contrast came out partial, as planted. With a second simulated adapter whose C1 rate was far below Stage 1's interval the replication check FAILED as it should.
+  That simulation also produced one nominal false alarm among the primary contrasts (P2 +5.4 pp on noise); the report now prints a loud "do not interpret" banner above the contrasts whenever the replication check fails, because the pre-registration says not to interpret in that case.
+- **Freeze:** `configs/stage3b_frozen.json` written 2026-11-04T13:03:04 GMT (SHA-256 of the cells config); editing the config makes `generate` refuse, restoring it makes it work again.
+- **Next:** commit and push before running (lesson of Entry 9), then the user deploys a pod; setup with `scripts/setup_pod.sh`, then `render`, then generate for both adapters. Cost estimate about $1.9 **[inferred]**; credit left about $3.5 **[inferred]**.
+
 ---
 
 ## 5. Decisions register
@@ -355,7 +407,8 @@ Estimated cost on an H100 **[inferred from Stage 1 speeds]**: full run about $2.
 | --- | --- | --- |
 | Credit added to Runpod | $10 | user |
 | Runpod 2026-11-03 (RTX PRO 4500 pod ~13 min, short-lived volumes) | **$0.170** total (GPU $0.157, pod disk $0.001, volume storage $0.012) | billing read **[measured]** |
-| Runpod 2026-11-04 (H100 pod, ~25-30 min at $3.99/hr) | ~$1.7-2.0 | **[inferred]**; billing record not yet posted |
+| Runpod 2026-11-04, Stage 1 pod (H100, ~25-30 min) | ~$1.7-2.0 | **[inferred]**; billing record not yet posted |
+| Runpod 2026-11-04, Stage 3 pod (H100, ~66 min at $3.99/hr) | ~$4.4 | **[inferred]**; billing record not yet posted |
 | Anthropic API (judge): validation 480 calls + hand tests + Stage 1 judging 3,780 calls | small (Haiku 5.5 is $0.10 / $0.50 per 1M tokens) | exact spend not read **[unmeasured]** |
 
 ---

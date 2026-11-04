@@ -126,6 +126,9 @@ def step_report(args):
                 print(f"=== MANIPULATION CHECK: {model} under the '{domain}' wording")
                 print_factor_tables(group)
                 print()
+    if args.check_only:
+        print("(--check-only: effects not shown. Per the pre-registration, decide from the red flags above whether the run may continue.)")
+        return
     for model in MODELS:
         plain = [r for r in stage1 if r["model"] == model]
         if plain:
@@ -185,6 +188,7 @@ def main():
     sub.add_parser("judge", help="score all answers")
     r = sub.add_parser("report", help="manipulation checks and the pre-specified contrasts")
     r.add_argument("--sensitivity", action="store_true", help="also show the low-alignment-regardless-of-coherence check")
+    r.add_argument("--check-only", action="store_true", help="show only completeness and the manipulation check (read this first)")
     args = parser.parse_args()
     {"generate": step_generate, "judge": step_judge, "report": step_report}[args.step](args)
 
