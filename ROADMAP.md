@@ -138,6 +138,19 @@ Tier 1 delivers every part of the original plan except the mechanistic intervent
 5. **Optional GPU session 3:** Phase D, only through Gate G4.
 6. **No cost:** Stage 7.
 
+## 8b. Decisions recorded 2026-11-04
+
+- **Credit top-up: yes** (amount and timing still to be given). Billing read after Stage 4: $8.24 spent of the $10 added, so at most about $1.76 is left; the top-up decides how much of Tiers 2-3 is possible.
+- **Public release: yes.** This turns section 6 (E3) into a checklist that must be completed before the repository or outputs are made public:
+  1. **Licence of the questions.** The 31 published questions (and the judge rubric text) come from a repository with no licence file. Contact the authors for permission, or release only question IDs and a fetch script, and say so.
+  2. **Harmful model output.** The saved answers contain model-written harmful text (fraud advice, medical misinformation, stereotypes). Decide between: releasing aggregate results plus a sampled, content-warned subset; releasing everything behind an access request; or releasing everything with a clear warning. Do not publish raw outputs without this decision.
+  3. **Never redistribute the decrypted training data** (the authors encrypt it on purpose); release only the fetch-and-decrypt command.
+  4. **Secrets and history.** Before changing the repository from private to public: scan the full git history for keys and personal data (`.env` was never committed; verify rather than assume), check that no absolute personal paths matter, and review commit messages.
+  5. **Where outputs live.** `outputs/` is gitignored today; choose a host (a data archive with a DOI) and record checksums.
+  6. **Judge dependence.** The scores come from a commercial model; release the judge prompts, the model name and the dates, and state that re-judging needs an API key.
+  7. **Credit and affiliation.** Cite the upstream papers and repository; state clearly that the study is independent.
+  8. **The hand audit must be done before release**, because the headline claims are judge-conditional.
+
 ## 9. Decisions needed from the user
 
 1. Scope tier (1, 2 or 3).
