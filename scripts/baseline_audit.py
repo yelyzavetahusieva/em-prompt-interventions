@@ -60,7 +60,7 @@ def step_generate(args):
     }
     jobs = build_jobs(args.model, args.n_anchor, args.n_extended)
     model, tokenizer = load_model(args.model)
-    generate_all(jobs, gen_path(args.model), make_hf_generate_fn(model, tokenizer), meta)
+    generate_all(jobs, gen_path(args.model), make_hf_generate_fn(model, tokenizer), meta, batch_size=args.batch_size)
 
 
 def step_judge(args):
@@ -141,6 +141,7 @@ def main():
     g.add_argument("--model", required=True, choices=MODELS)
     g.add_argument("--n-anchor", type=int, default=N_ANCHOR)
     g.add_argument("--n-extended", type=int, default=N_EXTENDED)
+    g.add_argument("--batch-size", type=int, default=32, help="answers generated at once")
     sub.add_parser("judge", help="score all generations with the judge")
     sub.add_parser("report", help="summary table and go/no-go checklist")
     a = sub.add_parser("audit", help="write a hand-audit sample")

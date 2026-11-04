@@ -7,8 +7,8 @@ plus any other fields to keep (question_id, condition_id, ...). They are copied
 into the saved record.
 
 This file does not touch any model. The model is hidden behind `generate_fn`:
-    generate_fn(messages, seed) -> dict with "output" (the answer text) and optionally
-    other fields to save, such as "prompt_tokens" and "output_tokens"
+    generate_fn(list_of_messages, seed) -> list of dicts, one per input, each with "output"
+    (the answer text) and optionally other fields to save, such as "prompt_tokens" and "output_tokens"
 (for a real model, see make_hf_generate_fn in models.py), which also makes this
 loop easy to test without a GPU.
 """
@@ -21,12 +21,16 @@ from src.store import append_record, load_done_keys
 
 
 def seed_for(key):
-    """A fixed seed per job, derived from its key: re-running a job gives the same sampling."""
+    """A fixed seed derived from a job key (the first job of each batch)."""
     return zlib.crc32(key.encode())
 
 
-def generate_all(jobs, out_path, generate_fn, meta=None):
+def generate_all(jobs, out_path, generate_fn, meta=None, batch_size=1):
     """Run every job whose key is not already in out_path. Safe to interrupt and re-run.
+
+    Jobs are processed `batch_size` at a time (a GPU can generate many answers at once for
+    roughly the cost of one). Each answer is saved as soon as its batch finishes, so an
+    interruption loses at most one batch.
 
     `meta` is a dict stored on every record (model name, revisions, decoding settings).
     """
@@ -36,19 +40,23 @@ def generate_all(jobs, out_path, generate_fn, meta=None):
 
     done = load_done_keys(out_path)
     todo = [job for job in jobs if job["key"] not in done]
-    print(f"{len(done)} jobs already done, {len(todo)} to do -> {out_path}")
+    print(f"{len(done)} jobs already done, {len(todo)} to do (batch size {batch_size}) -> {out_path}")
 
     start = time.time()
-    for n, job in enumerate(todo, start=1):
-        result = generate_fn(job["messages"], seed_for(job["key"]))
-        record = {
-            **job,
-            **result,
-            **(meta or {}),
-            "time": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-        }
-        append_record(out_path, record)  # saved to disk right now
-        if n % 10 == 0 or n == len(todo):
-            per_job = (time.time() - start) / n
-            minutes_left = per_job * (len(todo) - n) / 60
-            print(f"  {n}/{len(todo)} done | {per_job:.1f}s per job | about {minutes_left:.0f} min left")
+    finished = 0
+    for i in range(0, len(todo), batch_size):
+        batch = todo[i:i + batch_size]
+        seed = seed_for(batch[0]["key"])  # one seed per batch, saved with every record
+        results = generate_fn([job["messages"] for job in batch], seed)
+        for job, result in zip(batch, results):
+            record = {
+                **job,
+                **result,
+                **(meta or {}),
+                "seed": seed,
+                "time": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            }
+            append_record(out_path, record)  # saved to disk right now
+        finished += len(batch)
+        per_job = (time.time() - start) / finished
+        print(f"  {finished}/{len(todo)} done | {per_job:.2f}s per answer | about {per_job * (len(todo) - finished) / 60:.0f} min left")

@@ -70,22 +70,29 @@ DEFAULT_GEN_SETTINGS = {
 
 
 def make_hf_generate_fn(model, tokenizer, settings=DEFAULT_GEN_SETTINGS):
-    """Wrap a loaded model into a function: (messages, seed) -> {"output", "prompt_tokens", "output_tokens"}.
+    """Wrap a loaded model into a function: (list of messages, seed) -> list of
+    {"output", "prompt_tokens", "output_tokens"}, one per input.
 
-    This is the `generate_fn` that src/generate.py expects.
+    This is the `generate_fn` that src/generate.py expects. Several prompts are generated
+    at once; shorter prompts are padded on the LEFT so every answer starts right after its prompt.
     """
+    tokenizer.padding_side = "left"
 
-    def generate_fn(messages, seed):
-        text = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-        inputs = tokenizer(text, return_tensors="pt").to(model.device)
-        torch.manual_seed(seed)  # same job -> same sampling, if it is ever re-run
+    def generate_fn(batch_messages, seed):
+        texts = [tokenizer.apply_chat_template(m, tokenize=False, add_generation_prompt=True) for m in batch_messages]
+        inputs = tokenizer(texts, return_tensors="pt", padding=True).to(model.device)
+        torch.manual_seed(seed)
         with torch.no_grad():
-            output = model.generate(**inputs, do_sample=True, **settings)
-        new_tokens = output[0][inputs["input_ids"].shape[1]:]  # drop the prompt tokens
-        return {
-            "output": tokenizer.decode(new_tokens, skip_special_tokens=True),
-            "prompt_tokens": int(inputs["input_ids"].shape[1]),  # saved: input length is a covariate
-            "output_tokens": int(len(new_tokens)),  # saved: output length is a confound to check
-        }
+            output = model.generate(**inputs, do_sample=True, pad_token_id=tokenizer.pad_token_id, **settings)
+        input_len = inputs["input_ids"].shape[1]  # same for the whole batch (padded)
+        results = []
+        for i in range(len(batch_messages)):
+            new_tokens = output[i][input_len:]  # drop the prompt (and its padding)
+            results.append({
+                "output": tokenizer.decode(new_tokens, skip_special_tokens=True),
+                "prompt_tokens": int(inputs["attention_mask"][i].sum()),  # real tokens, no padding
+                "output_tokens": int((new_tokens != tokenizer.pad_token_id).sum()),
+            })
+        return results
 
     return generate_fn
