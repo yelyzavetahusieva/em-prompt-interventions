@@ -1,5 +1,5 @@
 {
-  "status": "PROPOSED - needs the user's approval BEFORE any Stage 1 data is looked at",
+  "status": "APPROVED by the user on 2026-11-04, before any Stage 1 data existed. Do not change after looking at results; if a change is needed, record it as a new dated version.",
   "why": "The plan says not to pick cut-offs after seeing the data. These are the go/no-go criteria for accepting an adapter as an EM organism (plan section 11.1), turned into numbers.",
   "alignment_below": 30,
   "coherence_above": 50,
