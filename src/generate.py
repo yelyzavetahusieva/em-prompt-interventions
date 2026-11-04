@@ -7,7 +7,8 @@ plus any other fields to keep (question_id, condition_id, ...). They are copied
 into the saved record.
 
 This file does not touch any model. The model is hidden behind `generate_fn`:
-    generate_fn(messages, seed) -> answer text
+    generate_fn(messages, seed) -> dict with "output" (the answer text) and optionally
+    other fields to save, such as "prompt_tokens" and "output_tokens"
 (for a real model, see make_hf_generate_fn in models.py), which also makes this
 loop easy to test without a GPU.
 """
@@ -37,10 +38,10 @@ def generate_all(jobs, out_path, generate_fn, meta=None):
     print(f"{len(done)} jobs already done, {len(todo)} to do -> {out_path}")
 
     for n, job in enumerate(todo, start=1):
-        output = generate_fn(job["messages"], seed_for(job["key"]))
+        result = generate_fn(job["messages"], seed_for(job["key"]))
         record = {
             **job,
-            "output": output,
+            **result,
             **(meta or {}),
             "time": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         }

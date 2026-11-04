@@ -70,7 +70,7 @@ DEFAULT_GEN_SETTINGS = {
 
 
 def make_hf_generate_fn(model, tokenizer, settings=DEFAULT_GEN_SETTINGS):
-    """Wrap a loaded model into a function: (messages, seed) -> answer text.
+    """Wrap a loaded model into a function: (messages, seed) -> {"output", "prompt_tokens", "output_tokens"}.
 
     This is the `generate_fn` that src/generate.py expects.
     """
@@ -82,6 +82,10 @@ def make_hf_generate_fn(model, tokenizer, settings=DEFAULT_GEN_SETTINGS):
         with torch.no_grad():
             output = model.generate(**inputs, do_sample=True, **settings)
         new_tokens = output[0][inputs["input_ids"].shape[1]:]  # drop the prompt tokens
-        return tokenizer.decode(new_tokens, skip_special_tokens=True)
+        return {
+            "output": tokenizer.decode(new_tokens, skip_special_tokens=True),
+            "prompt_tokens": int(inputs["input_ids"].shape[1]),  # saved: input length is a covariate
+            "output_tokens": int(len(new_tokens)),  # saved: output length is a confound to check
+        }
 
     return generate_fn

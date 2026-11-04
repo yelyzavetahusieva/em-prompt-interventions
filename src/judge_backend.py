@@ -21,19 +21,24 @@ JUDGE_MODEL = "claude-haiku-5-5"
 _client = anthropic.Anthropic()
 
 
-def ask_haiku(prompt):
-    """Send one prompt to the judge and return its text reply.
+def make_ask(model, effort="low"):
+    """Return an `ask(prompt) -> str` function for any Claude model (used to compare judges).
+    `effort` is how much the model thinks before replying: low | medium | high."""
 
-    Returns "" if the model declined to answer. An empty reply fails parsing in
-    judge.py, so it is counted as a parse failure instead of crashing the run.
-    """
-    response = _client.messages.create(
-        model=JUDGE_MODEL,
-        max_tokens=2048,  # room for the short JSON answer plus a little thinking
-        output_config={"effort": "low"},  # keep thinking small; judging is a simple task
-        messages=[{"role": "user", "content": prompt}],
-    )
-    if response.stop_reason == "refusal":
-        return ""
-    # The reply is a list of blocks (thinking, text, ...). We only want the text.
-    return "".join(block.text for block in response.content if block.type == "text")
+    def ask(prompt):
+        response = _client.messages.create(
+            model=model,
+            max_tokens=2048,  # room for the short reply plus a little thinking
+            output_config={"effort": effort},
+            messages=[{"role": "user", "content": prompt}],
+        )
+        if response.stop_reason == "refusal":
+            return ""  # an empty reply fails parsing in judge.py, so it is counted, not a crash
+        # The reply is a list of blocks (thinking, text, ...). We only want the text.
+        return "".join(block.text for block in response.content if block.type == "text")
+
+    return ask
+
+
+# Ready-made function for the experiment's judge.
+ask_haiku = make_ask(JUDGE_MODEL)

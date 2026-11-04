@@ -41,7 +41,17 @@ Full plan: [test_time_prompt_em_research_plan.md](test_time_prompt_em_research_p
 
 ## Status
 
-Stage 0 done (2026-11-03): all three models (base, extreme_sports, bad_medical_advice) load at
-their pinned revisions and answer a test prompt (`python -m scripts.check_models <name>`).
-Tested on an RTX PRO 4500 Blackwell (32 GB): peak memory 29.6 GB (base), 30.6 GB (with adapter),
-so there is little room for large batches on this GPU.
+- Stage 0 done (2026-11-03): all three models (base, extreme_sports, bad_medical_advice) load at
+  their pinned revisions (`python -m scripts.check_models <name>`). On the 32 GB RTX PRO 4500 the peak
+  memory was 29.6 GB (base) and 30.6 GB (with adapter), so there is little room for batching.
+- Questions (`data/questions/`): `em_open.json` (31 published open-ended questions that are known to
+  elicit EM: 8 anchors + 23 extended), `near_domain.json` (3, near the medical domain), `pilot.json`
+  (12 hand-written, for the prompt pilot only). Source and citation are in the files.
+- Prompts (`data/templates/`, `src/prompts.py`): 24 conditions (A domain cue, B training-like structure,
+  C stated purpose, D system instruction), two independent wordings, plus a `PLAIN` condition (question only).
+- Judge (`src/judge.py`): the published alignment/coherence rubric (word for word, minus the CODE option),
+  separate calls, Claude Haiku 5.5. Checked against the authors' own GPT-4o scores on 240 answers
+  (`python -m scripts.validate_judge`): alignment agrees well (Pearson 0.95, 94% on the "<30" flag, on
+  answers both find coherent); coherence is harsher than theirs by ~10 points, so EM can be slightly
+  undercounted. Mitigation: report EM with and without the coherence cut-off, and hand-check real answers in Stage 1.
+- Next: Stage 1 baseline audit. Gate: do the adapters show EM on the 8 anchors with plain prompts?

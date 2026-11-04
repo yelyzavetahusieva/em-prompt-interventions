@@ -18,3 +18,6 @@ outputs/*
 
 # Secrets (API keys). Never commit this file.
 .env
+
+# Third-party validation data (no licence): fetch it, do not commit it. See scripts/validate_judge.py
+data/validation/
