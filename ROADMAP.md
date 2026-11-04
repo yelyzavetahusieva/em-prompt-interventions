@@ -150,6 +150,7 @@ Tier 1 delivers every part of the original plan except the mechanistic intervent
   6. **Judge dependence.** The scores come from a commercial model; release the judge prompts, the model name and the dates, and state that re-judging needs an API key.
   7. **Credit and affiliation.** Cite the upstream papers and repository; state clearly that the study is independent.
   8. **The hand audit must be done before release**, because the headline claims are judge-conditional.
+  9. **Related work (added 2026-11-04, RESEARCH_LOG Entry 29).** Read in full and cite before any claim: Wyse et al. arXiv:2507.06253 (HHH/evil system nudges on insecure-code EM), the "Flamingos" post (instruction-free system prompts at training time), the conditional-misalignment paper arXiv:2604.25891, and the Piggyback paper arXiv:2606.06667 (prefix/template edits; not yet read). The claim must be framed as a controlled decomposition (role vs content vs departure), not as discovering that system prompts reduce EM.
 
 ## 9. Decisions needed from the user
 
