@@ -5,3 +5,6 @@ accelerate
 pandas
 anthropic
 python-dotenv
+numpy
+scipy
+scikit-learn

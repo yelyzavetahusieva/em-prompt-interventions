@@ -1,0 +1,11 @@
+{
+  "frozen_on": "2026-11-04T16:23:42+00:00",
+  "files": {
+    "configs/stage5_cells.json": "d4a043c5d2a14acf8b60d8e2bdabeca97c30936f4766eaedf577cf1e56bdcf62",
+    "data/stage4/heldout.json": "9715011e8b98b1f7daad33dd5a939a19786b37b510604f9a7ab334f3772d164b",
+    "PREREGISTRATION_STAGE5.md": "03c0aa30e442809681b84935d367dbb9a2b4425e4348a0a00162362421786b1d",
+    "outputs/stage5/prompts.jsonl": "20050927f4a8a6fceff6d04fbce71e9176025e0be8f6fc3be05929eb8ce4621a",
+    "outputs/stage5/reference_extreme_sports.jsonl": "25f6e62b2c9d3ed8b5c551b48f30df2d8d241a56517a1e2a15a191b89532639b",
+    "outputs/stage5/reference_bad_medical_advice.jsonl": "a39bfa62c310583e55e7176223eb9235c38e0540e4665a2a17f98405e0f55b74"
+  }
+}

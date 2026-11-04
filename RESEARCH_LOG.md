@@ -19,7 +19,9 @@ repo we did not verify independently; **[inferred]** our reading or estimate, no
 | 2. Prompt pilot | **Tooling ready, not run; whether to run it is open (Entry 11)** | 2,376 answers planned; prompt review document written for a human read |
 | 3b. Follow-up: what suppressed EM? | **Run complete and judged (2,604 answers); provisional** | Entry 17: a system message suppresses EM; a one-line style instruction removes almost all of it |
 | 3. Main factorial run | **Run complete and judged (5,952 answers); results provisional until the hand audit** | Entry 14. Headline: the two system-prompt "mitigations" made the adapters **more** misaligned than the neutral system prompt, against our prediction |
-| 4-7 | Not started | |
+| 4. Lean robustness of the style-instruction effect | **Run complete and judged (4,398 answers); provisional** | Entry 24 |
+| 5. Completing the behavioural picture + representation analysis | **Built, tested and frozen 2026-11-04; not yet run (needs one cheap-pod session)** | Entries 25-28 |
+| 6-7 | Not started | |
 
 Key open items: hand audit of Stage 1 answers; held-out question set; more advice-style questions; factual-disagreement
 items; safe-domain set (only 3 of 16 exist). Full list in section 6.
@@ -494,6 +496,18 @@ Secondary at T0: V1 minus random fact -7.5 pp (-15.1, -2.2) sports, -6.5 (-14.0,
 - **Corrections made at approval, before any data (no change of design):** (1) the pre-registration said 17 variants; listing them gives **16**; (2) the primary metric M2 is computed over the **13 variants that have a bare-question version**, because HHH and epistemic only occur with a context sentence (they are held out in their own folds and reported in a secondary M2b on the neutral-context frame against Stage 3b's cell C3); the default is the baseline and is never held out; 15 variants are held out in total. Both were arithmetic/definition errors found while preparing to build.
 - **Build plan:** `src/activations.py` (hook-based extraction, right padding), `src/prompt_pool.py` (distinct prompts, variant labels, pooled outcomes), `src/repr_analysis.py` (leave-one-variant-out analysis, comparators, permutation null), `scripts/stage5.py` (Part A: freeze, render, generate, judge, report), `scripts/stage5_extract.py`, `scripts/stage5_analyze.py`, `scripts/run_stage5.sh`; tests on a tiny random model on CPU and on simulated activations with and without a planted direction; then freeze, commit and push before any pod is used.
 
+### Entry 28. 2026-11-04: Stage 5 built, tested and frozen (nothing run on a GPU yet)
+**What was built** (all on the Mac, no pod, no API spend): `src/activations.py` (forward-hook extraction at chosen layers, right padding, last-real-token gather, answer-token mean, PEFT-aware), `src/prompt_pool.py` (16-variant labelling of every prompt used in the study, pooled outcomes per prompt), `src/repr_analysis.py` (leave-one-variant-out ridge, nested layer/alpha choice, M1/M2, bootstrap, permutation null, comparators), `scripts/stage5.py` (reference sampling, prompt list, freeze, template check, Part A jobs/judge/report), `scripts/stage5_extract.py` (pod), `scripts/stage5_analyze.py` (Mac), `scripts/run_stage5.sh` (one pod session), `scripts/run_tests.sh`.
+**Tests (all pass; `bash scripts/run_tests.sh`)** [measured]:
+- Extraction on a tiny randomly initialised Qwen2 model on CPU: batched equals one-at-a-time (padding does not leak), layer *l* equals HF `hidden_states[l]`, answer-token mean equals a manual mean, no hooks left behind, the LoRA adapter really changes the hooked states, PEFT wrapper reached. End-to-end with Qwen's real tokenizer and chat template: default system message inserted when none is given, saved row order restored after length-sorting, Arm B answer tokens end with the end-of-turn token.
+- Analysis on simulated activations: a direction planted in the within-question part is recovered (M2 0.8-0.95, interval above 0, permutation p about 0.01); no signal: M2 averages 0 over 6 datasets and permutation p is not small (0 or 1 of 6 below 0.05); a signal at the **question level only** (some questions more aligned) does **not** masquerade as a system-message effect (M2 about 0 +- 0.3).
+- Part A: 1,488 jobs, V1 and V0 messages identical to Stage 3b cells C6 and C1, B1 and B2 texts as specified; the report script runs end to end on simulated answers and reads a planted "instruction works, one-word edit does not" pattern correctly. The real Qwen template passes all five template facts (checked on the Mac with the tokenizer only).
+- The analysis script runs end to end (all six sections: MAIN, R1, R3, R4, R5, R6) on the real prompt pool and outcomes with simulated activations. Timing for realistic sizes (5,120 dimensions, 1,001 outcome columns): about 0.5 s per fold and layer, so about 4 minutes per adapter for the main test and about 30 minutes for the whole analysis.
+**Two bugs the tests caught** before any GPU spend: (1) `decoder_core` unwrapped a PEFT model twice (the inner model PEFT injects also has `peft_config`); (2) the prompt lookup assumed one prompt per (variant, frame, question), true for bare and context prompts but not for the several hundred cued prompts per variant. Also learned: the pre-registered permutation null (shuffle within question) keeps each question's average, so it is a **strict** null (see pre-registration section 8): it asks whether the system-message information adds beyond a question-level axis.
+**Real inputs prepared** [measured]: reference sample 1,000 training examples per dataset (seed 0; sports 6,000 rows, medical 7,049 rows) in `outputs/stage5/reference_*.jsonl` (gitignored, never redistributed); prompt list `outputs/stage5/prompts.jsonl`: **2,614 distinct prompts, 1,560 per adapter** (Part A prompts included); 14 of 16 variants have outcomes before Part A (B1 and B2 come from Part A).
+**Freeze:** `PREREGISTRATION_STAGE5.md` got a dated section 8 (implementation details fixed at build time, before any data); `configs/stage5_frozen.json` fingerprints the config, held-out file, pre-registration, prompt list and both reference files; the generation and extraction scripts refuse to run if any differs.
+**Not yet done / next:** commit and push; the user deploys a cheap pod (RTX PRO 4500 class, cap $1.00, ask before anything pricier); `setup_pod.sh`, `sync_outputs.sh push`, `nohup bash scripts/run_stage5.sh` (about 55-65 min); pull; judge Part A on the Mac; read the Part A checks first, then the contrasts; run `scripts/stage5_analyze.py`. Credit left: at most about $1.76 until the user's top-up.
+
 ---
 
 ## 5. Decisions register
@@ -516,6 +530,7 @@ Secondary at T0: V1 minus random fact -7.5 pp (-15.1, -2.2) sports, -6.5 (-14.0,
 | 11-04 | Base model: 1 sample per cell | Base EM was 0% | User-approved |
 | 11-04 | A result is SUPPORTED only if its 99% interval excludes 0 and the effect is >= 5 points | Bootstrap intervals are slightly optimistic (1.8% false alarms vs 1% target) | User-approved (11-04) |
 | 11-04 | Interaction claims on the alignment scale only | EM-rate interactions can come from the threshold alone | User-approved (11-04) |
+| 11-04 | Stage 5 build details fixed in pre-registration section 8 (raw mean-alignment target, alpha grid, layer by inner within-question Spearman, strict within-question permutation null, rivals given best layer/version/sign) | Specified before any Stage 5 data; they do not change the approved design | Claude's call, disclosed; user may veto |
 
 ---
 
@@ -577,7 +592,7 @@ Secondary at T0: V1 minus random fact -7.5 pp (-15.1, -2.2) sports, -6.5 (-14.0,
 | Approved gate | `configs/stage1_gate.json` |
 | Questions | `data/questions/em_open.json` (31), `near_domain.json` (3), `pilot.json` (12) |
 | Prompt wording | `data/templates/{extreme_sports,bad_medical_advice,system_prompts}.json`; builder `src/prompts.py` |
-| Code | `src/{models,generate,store,judge,judge_backend,analysis,prompts}.py`; `scripts/{check_models,baseline_audit,validate_judge}.py`, `scripts/sync_outputs.sh` |
+| Code | `src/{models,generate,store,judge,judge_backend,analysis,prompts,runs,report,freeze,activations,prompt_pool,repr_analysis}.py`; tests `tests/`, run by `scripts/run_tests.sh`; Stage 5 scripts `scripts/{stage5,stage5_extract,stage5_analyze}.py`, `scripts/run_stage5.sh`; `scripts/{check_models,baseline_audit,validate_judge}.py`, `scripts/sync_outputs.sh` |
 | Stage 1 raw results (Mac only) | `outputs/stage1/generations_{base,extreme_sports,bad_medical_advice}.jsonl`, `outputs/stage1/scores.jsonl` |
 | Judge validation (Mac only) | `outputs/validation/claude-haiku-5-5-low.jsonl`; authors' scored answers in `data/validation/` |
 | Commits | `7d5aabd` init; `fdf9d1b` Stage 0; `31eaf16` README; `0dd1602` questions+judge v1; `2c3f2d2` resumable runs+templates; `f1545ac` rebuild after audit; `ab751d5` Stage 1 audit; `210172c` thresholds approved; `d5f5b5b` README; `44d113b` research log **and** the batched-generation code (`src/generate.py`, `src/models.py`, `scripts/baseline_audit.py`), which had been left uncommitted; the commit message mentions only the log. The Stage 1 results were produced with the batched code in `44d113b`, not with the earlier unbatched `ab751d5`. |
