@@ -316,6 +316,7 @@ Three judge replies could not be parsed and remain unscored (`bad_medical_advice
 - GitHub SSH from the tool session was intermittently refused ("Permission denied (publickey)") although the key is registered; retries worked. The SSH agent holds no key.
 - `ssh` inside a here-document swallowed the rest of the script (use `ssh -n`); zsh does not word-split unquoted variables (use bash for option variables).
 - README wording about the thresholds was left stale after the first edit and corrected in a later commit.
+- The batched-generation code was used for the Stage 1 run before it was committed; it was only committed afterwards, bundled into the research-log commit (`44d113b`). Lesson: commit code before running experiments with it, so the commit hash identifies exactly what produced the results.
 - Estimate corrected in Entry 3: the Stage 0 pod was billed ~13 minutes, not the ~25 minutes first assumed.
 
 ---
@@ -332,7 +333,7 @@ Three judge replies could not be parsed and remain unscored (`bad_medical_advice
 | Code | `src/{models,generate,store,judge,judge_backend,analysis,prompts}.py`; `scripts/{check_models,baseline_audit,validate_judge}.py`, `scripts/sync_outputs.sh` |
 | Stage 1 raw results (Mac only) | `outputs/stage1/generations_{base,extreme_sports,bad_medical_advice}.jsonl`, `outputs/stage1/scores.jsonl` |
 | Judge validation (Mac only) | `outputs/validation/claude-haiku-5-5-low.jsonl`; authors' scored answers in `data/validation/` |
-| Commits | `7d5aabd` init; `fdf9d1b` Stage 0; `31eaf16` README; `0dd1602` questions+judge v1; `2c3f2d2` resumable runs+templates; `f1545ac` rebuild after audit; `ab751d5` Stage 1 audit; `210172c` thresholds approved; `d5f5b5b` README |
+| Commits | `7d5aabd` init; `fdf9d1b` Stage 0; `31eaf16` README; `0dd1602` questions+judge v1; `2c3f2d2` resumable runs+templates; `f1545ac` rebuild after audit; `ab751d5` Stage 1 audit; `210172c` thresholds approved; `d5f5b5b` README; `44d113b` research log **and** the batched-generation code (`src/generate.py`, `src/models.py`, `scripts/baseline_audit.py`), which had been left uncommitted; the commit message mentions only the log. The Stage 1 results were produced with the batched code in `44d113b`, not with the earlier unbatched `ab751d5`. |
 | Upstream sources | `github.com/clarifying-EM/model-organisms-for-EM` (training data, eval questions, `judges.yaml`); Turner et al. 2025, arXiv:2506.11613 |
 
 `outputs/` and `data/validation/` are gitignored. Back them up outside git.
