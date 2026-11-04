@@ -83,7 +83,7 @@ def make_hf_generate_fn(model, tokenizer, settings=DEFAULT_GEN_SETTINGS):
         inputs = tokenizer(texts, return_tensors="pt", padding=True).to(model.device)
         torch.manual_seed(seed)
         with torch.no_grad():
-            output = model.generate(**inputs, do_sample=True, pad_token_id=tokenizer.pad_token_id, **settings)
+            output = model.generate(**inputs, pad_token_id=tokenizer.pad_token_id, **{"do_sample": True, **settings})
         input_len = inputs["input_ids"].shape[1]  # same for the whole batch (padded)
         results = []
         for i in range(len(batch_messages)):

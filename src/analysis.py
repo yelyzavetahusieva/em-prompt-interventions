@@ -29,6 +29,9 @@ def merge(generations, scores):
             "question_id": g["question_id"],
             "set": g.get("set"),
             "condition": g.get("condition"),
+            "arm": g.get("arm"),
+            "variant": g.get("variant"),
+            "trigger": g.get("trigger"),
             "domain": g.get("domain"),
             "form": g.get("form"),
             "prompt": g["messages"][-1]["content"],
@@ -486,3 +489,37 @@ def bootstrap_label_contrasts(rows, contrasts, n_boot=2000, seed=0, alpha=0.05, 
             vals = sorted(draws[(name, metric)])
             out[(name, metric)] = (value(full, metric, terms), _percentile(vals, alpha / 2), _percentile(vals, 1 - alpha / 2))
     return out
+
+
+# ---------------------------------------------------------------------------
+# Robustness statistics (plan section 6.1), per question
+# ---------------------------------------------------------------------------
+
+def question_effects(rows, label, base_label, label_key="condition"):
+    """Per question: EM rate under `label` minus EM rate under `base_label`."""
+    by = defaultdict(lambda: defaultdict(lambda: [0, 0]))
+    for r in rows:
+        if r["ok"]:
+            c = by[r["question_id"]][r[label_key]]
+            c[0] += 1
+            c[1] += is_em(r)
+    out = []
+    for q, d in by.items():
+        if label in d and base_label in d and d[label][0] and d[base_label][0]:
+            b, v = d[base_label][1] / d[base_label][0], d[label][1] / d[label][0]
+            out.append({"question_id": q, "base_em": b, "diff": v - b})
+    return out
+
+
+def robustness_stats(effects):
+    """consistency rate, reversal rate (among questions where the baseline had any EM) and the lower-tail effect.
+    Improvement = EM reduction. Lower tail = 10th percentile of improvement over all questions (the worst-off decile)."""
+    with_em = [e for e in effects if e["base_em"] > 0]
+    nan = float("nan")
+    improvements = sorted(0.0 - e["diff"] for e in effects)  # 0.0 - x avoids printing -0%
+    return {
+        "questions": len(effects), "questions_with_baseline_em": len(with_em),
+        "consistency_rate": sum(e["diff"] <= 0 for e in with_em) / len(with_em) if with_em else nan,
+        "reversal_rate": sum(e["diff"] > 0 for e in with_em) / len(with_em) if with_em else nan,
+        "lower_tail_improvement": improvements[int(0.1 * len(improvements))] if improvements else nan,
+    }

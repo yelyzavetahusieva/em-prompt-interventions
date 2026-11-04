@@ -14,21 +14,32 @@ from src.generate import generate_all
 from src.store import latest_by_key, load_records
 
 
-def generate_for_model(model_name, jobs, out_path, batch_size=32, extra_meta=None):
-    """Load one model and run the jobs. Needs a GPU. Imports are inside so other steps run without torch."""
+def generate_groups(model_name, groups, out_path, batch_size=32, extra_meta=None):
+    """Load one model ONCE and run several groups of jobs, each with its own decoding settings.
+
+    groups: list of (jobs, settings); settings=None means the default temperature-1 sampling.
+    The settings actually used are saved on every record.
+    """
     from src.models import DEFAULT_GEN_SETTINGS, load_manifest, load_model, make_hf_generate_fn
 
     manifest = load_manifest()
     adapter = manifest["models"][model_name]["adapter"]
-    meta = {
-        "base_model": manifest["base"]["hf_id"],
-        "base_revision": manifest["base"]["revision"],
-        "adapter_revision": adapter["revision"] if adapter else None,
-        "gen_settings": DEFAULT_GEN_SETTINGS,
-        **(extra_meta or {}),
-    }
     model, tokenizer = load_model(model_name)
-    generate_all(jobs, out_path, make_hf_generate_fn(model, tokenizer), meta, batch_size=batch_size)
+    for jobs, settings in groups:
+        settings = settings or DEFAULT_GEN_SETTINGS
+        meta = {
+            "base_model": manifest["base"]["hf_id"],
+            "base_revision": manifest["base"]["revision"],
+            "adapter_revision": adapter["revision"] if adapter else None,
+            "gen_settings": settings,
+            **(extra_meta or {}),
+        }
+        generate_all(jobs, out_path, make_hf_generate_fn(model, tokenizer, settings), meta, batch_size=batch_size)
+
+
+def generate_for_model(model_name, jobs, out_path, batch_size=32, extra_meta=None):
+    """Load one model and run the jobs with the default decoding. Needs a GPU."""
+    generate_groups(model_name, [(jobs, None)], out_path, batch_size, extra_meta)
 
 
 def load_generations(out_dir):
