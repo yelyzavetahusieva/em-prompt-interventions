@@ -13,6 +13,7 @@ This file does not touch any model. The model is hidden behind `generate_fn`:
 loop easy to test without a GPU.
 """
 
+import time
 import zlib
 from datetime import datetime, timezone
 
@@ -37,6 +38,7 @@ def generate_all(jobs, out_path, generate_fn, meta=None):
     todo = [job for job in jobs if job["key"] not in done]
     print(f"{len(done)} jobs already done, {len(todo)} to do -> {out_path}")
 
+    start = time.time()
     for n, job in enumerate(todo, start=1):
         result = generate_fn(job["messages"], seed_for(job["key"]))
         record = {
@@ -47,4 +49,6 @@ def generate_all(jobs, out_path, generate_fn, meta=None):
         }
         append_record(out_path, record)  # saved to disk right now
         if n % 10 == 0 or n == len(todo):
-            print(f"  {n}/{len(todo)} done")
+            per_job = (time.time() - start) / n
+            minutes_left = per_job * (len(todo) - n) / 60
+            print(f"  {n}/{len(todo)} done | {per_job:.1f}s per job | about {minutes_left:.0f} min left")
