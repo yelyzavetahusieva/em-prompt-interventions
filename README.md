@@ -61,3 +61,5 @@ Full plan: [test_time_prompt_em_research_plan.md](test_time_prompt_em_research_p
   first (`generate --model base --n-anchor 1 --n-extended 0`, 8 answers) to check it and measure the speed.
 - Stage 2 (prompt pilot) tooling is ready (`scripts/pilot.py`, `scripts/setup_pod.sh`, `scripts/run_all_models.sh`, `scripts/freeze.py`);
   start by reading `outputs/stage2/prompt_review.md` (`python -m scripts.pilot prompts`, no cost).
+- Stage 3 (main run): approved and FROZEN on 2026-11-04 (`PREREGISTRATION_STAGE3.md`, `configs/stage3_analysis.json`, `configs/frozen.json`); not yet run.
+  Run on a GPU pod in three passes (`--passes 0`, then `1,2`) with `scripts/main_run.py`; `generate` refuses to run if templates or questions changed since the freeze.

@@ -22,8 +22,9 @@ Size: base answers with both domains' wordings, each adapter with its own domain
 
 import argparse
 
-from src.analysis import b_by_form, by_factor, level_stats, merge, red_flags
+from src.analysis import level_stats, merge
 from src.prompts import all_conditions, build_messages, load_questions, load_system_prompts, make_jobs, make_plain_jobs
+from src.report import HEADER, fmt, print_factor_tables
 from src.runs import generate_for_model, judge_directory, judge_reliability, load_generations
 from src.store import load_records
 
@@ -37,8 +38,6 @@ DOMAINS_FOR = {"base": ["extreme_sports", "bad_medical_advice"], "extreme_sports
 FAMILY = "discovery"
 N_SAMPLES = 2
 
-LEVEL_NAMES = {"A": {0: "neutral context", 1: "domain context"}, "B": {0: "plain question", 1: "training-like wrapper"},
-               "C": {0: "no purpose", 1: "benign purpose"}, "D": {0: "neutral system", 1: "HHH system", 2: "epistemic system"}}
 
 
 def gen_path(model):
@@ -109,19 +108,11 @@ def step_reliability(args):
           f"({r['em_label_flips']} flips); refusal flips {r['refusal_flips']}")
 
 
-def fmt(st):
-    return (f"{st['n']:>5}{st['failed']:>6}{st['em_rate']:>8.1%}"
-            f"{(st['mean_alignment'] if st['mean_alignment'] is not None else float('nan')):>8.0f}"
-            f"{(st['mean_coherence'] if st['mean_coherence'] is not None else float('nan')):>8.0f}"
-            f"{st['refusal_rate']:>9.1%}{(st['mean_tokens'] or 0):>8.0f}")
-
-
 def step_report(args):
     generations = load_generations(OUT_DIR)
     if not generations:
         raise SystemExit(f"No generations in {OUT_DIR}/.")
     rows = merge(generations, load_records(f"{OUT_DIR}/scores.jsonl"))
-    header = f"{'':<32}{'n':>5}{'fail':>6}{'EM':>8}{'align':>8}{'coher':>8}{'refusal':>9}{'tokens':>8}"
     print("PILOT: mechanics check, not an effect estimate. Pilot questions are benign, so EM is expected to be rare.\n")
     for model in MODELS:
         for domain in DOMAINS_FOR[model]:
@@ -129,20 +120,11 @@ def step_report(args):
             if not group:
                 continue
             print(f"=== {model} answers to the '{domain}' wording ({len(group)} answers)")
-            print(header)
-            table = by_factor(group)
-            for f in "ABCD":
-                for lv, st in table[f].items():
-                    print(f"{f}{lv} {LEVEL_NAMES[f][lv]:<29}{fmt(st)}")
-            print("  Factor B by question form (0 = plain, 1 = wrapper):")
-            for form, d in b_by_form(group).items():
-                print(f"    {form:<8} B0 {fmt(d[0])}\n    {'':<8} B1 {fmt(d[1])}")
-            flags = red_flags(table)
-            print("  RED FLAGS: " + ("none" if not flags else "\n    " + "\n    ".join(flags)))
+            print_factor_tables(group)
             print()
         plain = [r for r in rows if r["model"] == model and r.get("condition") == "PLAIN"]
         if plain:
-            print(f"--- {model}, PLAIN question (reference)\n{header}\n{'PLAIN':<32}{fmt(level_stats(plain))}\n")
+            print(f"--- {model}, PLAIN question (reference)\n{HEADER}\n{'PLAIN':<32}{fmt(level_stats(plain))}\n")
 
 
 # ---------------------------------------------------------------------------

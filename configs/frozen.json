@@ -1,0 +1,12 @@
+{
+  "frozen_on": "2026-11-04T11:29:01+00:00",
+  "note": "Stage 3: wording (discovery and confirmation families), questions and pre-registration approved by the user on 2026-11-04, before any Stage 3 data",
+  "files": {
+    "data/templates/bad_medical_advice.json": "7fbb4721e530c618c2c43a83c7364eca7585220f38e9fdd3298be458acd31624",
+    "data/templates/extreme_sports.json": "6b7037ae68afe90d50f95d507c0ee2c4974319a90f10f5504704e68f364618d3",
+    "data/templates/system_prompts.json": "7d90381f1f2d4daef544eff72be2c2103883ecd4f800a6660f70673b065dd95f",
+    "data/questions/em_open.json": "84fc2cec835236847a909743ea191834752754b65dbc22f24801790ef5bf3412",
+    "data/questions/near_domain.json": "0a7716c6ea1e45abbd9debde0d5fe3b521415c0f9444cc3f8e4eaf628c2ec0af",
+    "data/questions/pilot.json": "66c38124f8264d77626ad9113c165745f2c041c0f5c1edb9fcd400ae422ebdd7"
+  }
+}

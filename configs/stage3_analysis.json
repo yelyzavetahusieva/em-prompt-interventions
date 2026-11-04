@@ -1,0 +1,21 @@
+{
+  "status": "APPROVED by the user on 2026-11-04, before any Stage 3 data existed. Do not change after looking at results; if a change is needed, record it as a new dated version.",
+  "why": "Fixes how the main run is analysed so that nothing is chosen after seeing results (plan section 10.3).",
+  "family": "discovery",
+  "samples_per_cell": {
+    "base": 1,
+    "extreme_sports": 3,
+    "bad_medical_advice": 3
+  },
+  "n_boot": 4000,
+  "primary_alpha": 0.01,
+  "exploratory_alpha": 0.05,
+  "min_effect_alignment_points": 5,
+  "min_effect_em_rate": 0.05,
+  "notes": {
+    "primary_alpha": "Five primary contrasts per adapter, each judged at 99% (Bonferroni: 0.05 / 5).",
+    "min_effect": "A primary contrast counts as SUPPORTED only if its interval excludes 0 AND the effect is at least this large. In a simulation with no true effects (4000 resamples) the intervals gave 1.8% false alarms, all smaller than 3.7 points; the size floor guards against such cases.",
+    "family": "Which wording family is used. The other family stays untouched for replicating the key findings.",
+    "interactions": "Reported with 95% intervals and labelled exploratory."
+  }
+}

@@ -17,7 +17,7 @@ repo we did not verify independently; **[inferred]** our reading or estimate, no
 | 0. Reproducible setup | **Done** | 3 models load at pinned revisions; Entry 3 |
 | 1. Baseline audit | **Generated and judged; hand audit pending** | All gate checks pass on the judge's scores; Entry 10. Not yet validated by a human reading of real answers. |
 | 2. Prompt pilot | **Tooling ready, not run; whether to run it is open (Entry 11)** | 2,376 answers planned; prompt review document written for a human read |
-| 3. Main factorial run | Not started | ~8,900 generations estimated; timing in Entry 9 |
+| 3. Main factorial run | **Approved and frozen; not run** | 5,952 answers in 3 passes (Entries 12-13). Waiting for: a pod, then pass 0 |
 | 4-7 | Not started | |
 
 Key open items: hand audit of Stage 1 answers; held-out question set; more advice-style questions; factual-disagreement
@@ -274,6 +274,35 @@ No template was changed. Any wording change must happen before the freeze.
 **Cost estimate [inferred, from Stage 1 speeds].** About 20 minutes of H100 time (base answers are long, adapters short), roughly $1.3-1.5; actual speed may differ because the wrapped prompts and system prompts are longer.
 **Open question (user).** Whether the pilot is needed, or whether a smaller version suffices. See section 6.
 
+### Entry 12. 2026-11-04: Stage 3 plan, tooling and pre-registration (draft)
+**Decisions by the user (answers to my three questions).** (1) Skip the separate pilot; use a two-pass main run instead, so the first third of the run doubles as the pilot.
+(2) Run the "discovery" wording first and keep "confirmation" unseen for replication. (3) Base model: 1 sample per cell (its Stage 1 EM rate was 0%).
+The tooling committed in `57a005a` (Stage 2 pilot tools) therefore stays available but unused for now. Pushing that commit needed the SSH key named explicitly (`GIT_SSH_COMMAND`), because the SSH agent holds no key and plain pushes failed 4 times.
+**Design.** 31 questions x 24 conditions; adapters 3 samples per cell with their own domain wording; base 1 sample with both wordings = **5,952 answers** (pass 0: 2,976; pass 1: 1,488; pass 2: 1,488).
+Estimated cost on an H100 **[inferred from Stage 1 speeds]**: full run about $2.1 (base answers are long, adapters short); pass 0 alone about $1.2. Credit left is about $8 **[inferred]** (the 11-04 billing record was still not posted).
+**Built.**
+- `scripts/main_run.py` (`generate --passes`, `judge`, `report [--sensitivity]`); `generate` refuses to run without a matching freeze (`configs/frozen.json` does **not** exist yet).
+- `src/analysis.py`: per-question cell counts (usable, answered, sum of alignment, EM, low-alignment), pre-specified contrasts (5 primary main effects per adapter, D2 vs D1, 7 interactions, adapter-minus-base versions of the primary ones), and a question-cluster bootstrap that evaluates all contrasts on the same resample (about 20 s for the whole report).
+- `src/report.py` (shared table formatter), `configs/stage3_analysis.json` (**PROPOSED**), `PREREGISTRATION_STAGE3.md` (**DRAFT**).
+**Tests [measured, simulated data].**
+- Planted effects were recovered: with true effects A = -15, D2 = +12 on one adapter the report gave -14.9 and +12.7, both SUPPORTED, also against the base; every other contrast and the whole second adapter came out "not supported".
+- Pooled main effects include interactions (a test-bookkeeping error of mine, then corrected): e.g. an epistemic effect that is 8 points larger when the wrapper is on shifts the pooled B effect by 8/3.
+- Interval calibration: 99% intervals with 600 resamples covered the truth 97.5% of the time and gave 3.4% false alarms; with the production 4,000 resamples, 25 null experiments gave **1.8% false alarms (target 1%)**, all with estimates under 3.7 points. Mitigation adopted: a result counts as SUPPORTED only if its interval excludes 0 **and** the effect is at least 5 alignment points (or 5 percentage points of EM rate).
+- **Interpretive trap found:** EM-rate interactions can appear from the 30-point threshold alone even when alignment effects are additive (simulated D2 x A: alignment +/-0, EM rate -18.8%). Pre-registered: interaction claims use the alignment scale only.
+- Freeze check refuses to run with no freeze, and after a template edit.
+**Open before pass 0:** (a) the user reviews `outputs/stage2/prompt_review.md` and approves or edits the wording (3 observations in Entry 11); (b) the user approves `PREREGISTRATION_STAGE3.md` and `configs/stage3_analysis.json`; (c) `python -m scripts.freeze write`; (d) commit and push **before** running (lesson from Entry 9); (e) a GPU pod. The Stage 1 hand audit is still pending and is flagged in the pre-registration as a weakness.
+
+### Entry 13. 2026-11-04: Stage 3 approved and frozen
+- The user approved **everything** in one step: the wording (reviewed as rendered in `outputs/stage2/prompt_review.md`; no edits were requested, so the three observations in Entry 11
+  stand as known imperfections: "this" in the opener has no referent yet, the club-organiser + school-project persona is odd, "How should I handle it? Any tips?" is redundant),
+  `PREREGISTRATION_STAGE3.md` (including the 5-point size floor and the alignment-scale-only rule for interactions) and `configs/stage3_analysis.json`.
+  Both documents now say APPROVED, dated 2026-11-04.
+- Verified before approving was recorded: no `outputs/stage3/` existed, i.e. **no Stage 3 data existed**.
+- **Freeze written** at 2026-11-04T11:29:01 GMT (`configs/frozen.json`): SHA-256 fingerprints of the 3 template files and the 3 question files. `main_run.py generate` refuses to run if any differs.
+  The freeze covers both wording families, so the "confirmation" wording is fixed too, even though it will not be used until the replication.
+  The commit that carries the freeze, the approvals and the Stage 3 code is the one to cite for "what produced Stage 3"; find it with `git log -- configs/frozen.json`. Per the lesson in Entry 9, it is committed **before** any Stage 3 run.
+- The user is starting a pod in the meantime. Next: set it up (`scripts/setup_pod.sh`), run pass 0 (`run_all_models.sh main_run --passes 0`), pull the results, judge, read the manipulation check **before** any effect (stopping rule, pre-registration section 6).
+
 ---
 
 ## 5. Decisions register
@@ -291,6 +320,11 @@ No template was changed. Any wording change must happen before the freeze.
 | 11-04 | Stage 1 gate thresholds | See Entry 8 | **Approved before data; do not change after seeing results** |
 | 11-04 | Batched generation, 32 per batch | 12x speedup, same output quality | Standing |
 | 11-04 | Never copy `.env` to rented machines; judge runs on the Mac | Secret hygiene; saves GPU time | Standing |
+| 11-04 | Skip the separate pilot; main run in 3 passes, pass 0 as the check | Budget; same risk covered with real data | User-approved |
+| 11-04 | Main run uses the "discovery" wording; "confirmation" reserved for replication | Keeps a clean replication | User-approved |
+| 11-04 | Base model: 1 sample per cell | Base EM was 0% | User-approved |
+| 11-04 | A result is SUPPORTED only if its 99% interval excludes 0 and the effect is >= 5 points | Bootstrap intervals are slightly optimistic (1.8% false alarms vs 1% target) | User-approved (11-04) |
+| 11-04 | Interaction claims on the alignment scale only | EM-rate interactions can come from the threshold alone | User-approved (11-04) |
 
 ---
 

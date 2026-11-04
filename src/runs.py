@@ -14,7 +14,7 @@ from src.generate import generate_all
 from src.store import latest_by_key, load_records
 
 
-def generate_for_model(model_name, jobs, out_path, batch_size=32):
+def generate_for_model(model_name, jobs, out_path, batch_size=32, extra_meta=None):
     """Load one model and run the jobs. Needs a GPU. Imports are inside so other steps run without torch."""
     from src.models import DEFAULT_GEN_SETTINGS, load_manifest, load_model, make_hf_generate_fn
 
@@ -25,6 +25,7 @@ def generate_for_model(model_name, jobs, out_path, batch_size=32):
         "base_revision": manifest["base"]["revision"],
         "adapter_revision": adapter["revision"] if adapter else None,
         "gen_settings": DEFAULT_GEN_SETTINGS,
+        **(extra_meta or {}),
     }
     model, tokenizer = load_model(model_name)
     generate_all(jobs, out_path, make_hf_generate_fn(model, tokenizer), meta, batch_size=batch_size)
