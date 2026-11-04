@@ -20,7 +20,7 @@ repo we did not verify independently; **[inferred]** our reading or estimate, no
 | 3b. Follow-up: what suppressed EM? | **Run complete and judged (2,604 answers); provisional** | Entry 17: a system message suppresses EM; a one-line style instruction removes almost all of it |
 | 3. Main factorial run | **Run complete and judged (5,952 answers); results provisional until the hand audit** | Entry 14. Headline: the two system-prompt "mitigations" made the adapters **more** misaligned than the neutral system prompt, against our prediction |
 | 4. Lean robustness of the style-instruction effect | **Run complete and judged (4,398 answers); provisional** | Entry 24 |
-| 5. Completing the behavioural picture + representation analysis | **Complete: Part A (Entry 30) and Part B (Entry 31); provisional until the hand audit** | Entries 25-31 |
+| 5. Completing the behavioural picture + representation analysis | **Complete: Part A (Entry 30) and Part B (Entry 31); provisional until the hand audit** | Entries 25-32 |
 | 6-7 | Not started | |
 
 Key open items: hand audit of Stage 1 answers; held-out question set; more advice-style questions; factual-disagreement
@@ -552,6 +552,24 @@ By the pre-registered rule (both adapters required) the result is **SUPPORTED**.
 4. **Structure caveat:** the 13 variants form two clusters (large shifts: V1-V4, V6, ours; small shifts: V8, B1, B2, V7, empty, persona). Much of M2 can come from separating the clusters, and held-out style sentences leave near-copies (V1-V4) in training, so "leave one variant out" is a weaker test of novelty than "leave a whole family out". Spearman over 13 points is coarse.
 5. **Not causal.** A correlational fit; steering would be the causal follow-up and is not approved.
 **Stopping-rule check (pre-reg section 6):** Part A is clear and LOVO is positive, so mechanism work does not stop by the rule, but nothing follows automatically. Candidate follow-ups, each needing justification, pre-registration and a cap before anything is run: (a) **leave-one-family-out** (hold out all style sentences, or all instruction variants; Mac only, minutes, no pod): directly addresses caveat 4, the main threat to the headline; (b) steering (pod, causal; needs a decision at gate G4-style scrutiny); (c) hand audit and related-work reading, which are required before any claim regardless.
+
+### Entry 32. 2026-11-04: Stage 5C (exploratory): what does the finetuning change in the model's state?
+Pre-registered in `PREREGISTRATION_STAGE5C.md` (committed and pushed before any number was computed), code `scripts/stage5_delta.py`, tests `tests/test_stage5_delta.py` (planted/null pass). No pod, $0. Report: `outputs/stage5c_report.txt`. delta = adapter minus base activation at the last prompt token, same prompt.
+**G1, is the adapter's change gated by the default context?** [measured] Projection of the delta on the adapter's typical change in the default context (direction from other question groups), as a ratio to the default prompt, primary layer 24:
+
+| | default kept (V8, B1, B2) | replaced + instruction | replaced, no instruction |
+| --- | --- | --- | --- |
+| sports | 0.84 | 0.37 (0.36, 0.38) | 0.49 |
+| medical | 0.83 | 0.37 (0.36, 0.37) | 0.47 |
+
+Pre-specified rule met in both adapters (replaced+instruction upper limit < 0.8; default kept >= 0.8): **gating SUPPORTED** (same pattern at all six layers, strongest at 24-28; at layer 16 weaker, 0.71-0.77). Across the 13 variants the ratio tracks the observed alignment shift (Spearman -0.96 sports, -0.87 medical; lower ratio, larger alignment gain). Per variant: B2 1.00 (one-word edit: no change in the footprint, as in behaviour), B1 0.80/0.77, V8 0.73/0.72, instruction variants 0.30-0.45, non-instruction replacements 0.43-0.55.
+**G2, do the two adapters change the state the same way?** [measured] 55 bare default prompts answered by both. Primary (layer 24): cosine of the mean deltas **0.69** (0.68, 0.69); same-adapter half/half ceiling 1.00, cross-adapter 0.68, ratio 0.68 (< 0.7), so by the rule: **PARTLY shared**. Not chosen after the fact, the cosine rises with depth: 0.47 (L16), 0.54, 0.69, 0.78, 0.83, 0.84 (L36), the last three crossing the "largely shared" thresholds. Secondary: the prompt-dependent part (each adapter's delta minus its own mean) is also shared: paired-prompt cosine +0.51 to +0.87 vs about 0.00 for mismatched prompts (p = 0.001 at every layer).
+**Interpretation** [inferred; exploratory, correlational]:
+1. The two findings point the same way as Part A: the finetuning's footprint in the pre-answer state is largely intact when the default message is present (even with an instruction added, B1 0.8) and roughly halves or more when it is replaced, with instruction text replacing it giving the largest reduction. This is a **state-level version of "the adapter's effect is gated by the default context"**: the same gating Part A found in behaviour, now visible in the representation, and the size of the footprint shrinkage tracks the behavioural effect. It does not say the footprint reduction causes the behaviour change.
+2. Two adapters trained on unrelated narrow data (sports advice, medical advice) change the base model's state in a **substantially shared direction** (cosine about 0.7-0.8 at middle-to-late layers, also in the part that varies by prompt). That is one concrete aspect of an answer to "why does narrow training generalise": different narrow datasets move the same broad part of the state, so the change is not specific to the topic of the data.
+3. **Cannot yet say the shared direction is about misalignment.** Both adapters are LoRA finetunes of the same model on short chat-format advice answers by the same recipe, so a generic component (training format, answer style, "finetuned" shift) would be shared as well. With two adapters there is no control. A decisive control needs an adapter trained on **benign** data of the same format (the authors' repository has a good-medical-advice dataset; whether a released adapter exists is unchecked) or a third narrow adapter; then one asks whether the benign adapter's delta shares the direction.
+4. Also: the bootstrap intervals are very narrow because the delta is largely prompt-independent (the mean change dominates); they reflect question sampling only, not adapter or model variation.
+**Status of the study's "why" question:** one partial, correlational answer (shared and context-gated state change); the causal question and the benign-adapter control are open. No further analyses run.
 
 ---
 
