@@ -56,6 +56,6 @@ Full plan: [test_time_prompt_em_research_plan.md](test_time_prompt_em_research_p
   undercounted. Mitigation: report EM with and without the coherence cut-off, and hand-check real answers in Stage 1.
 - Stage 1 baseline audit is written and tested offline (`scripts/baseline_audit.py`, `src/analysis.py`):
   630 plain-prompt answers per model (8 anchors x 50 + 23 extended x 10), three steps: `generate` (GPU),
-  `judge` and `report` (Mac). The go/no-go thresholds in `configs/stage1_gate.json` are PROPOSED and need
-  approval before any data is looked at. Not yet run: the real model call in `generate`; do a smoke test
+  `judge` and `report` (Mac). The go/no-go thresholds in `configs/stage1_gate.json` were APPROVED on
+  2026-11-04, before any data existed. Not yet run: the real model call in `generate`; do a smoke test
   first (`generate --model base --n-anchor 1 --n-extended 0`, 8 answers) to check it and measure the speed.
