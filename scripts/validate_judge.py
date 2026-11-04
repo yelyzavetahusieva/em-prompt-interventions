@@ -19,9 +19,9 @@ Results are saved as they go and the run can be resumed.
 import argparse
 import csv
 import glob
-import math
 import os
 
+from src.analysis import pearson, spearman
 from src.judge import judge_all
 from src.judge_backend import JUDGE_MODEL, make_ask
 from src.store import latest_by_key, load_records
@@ -48,30 +48,6 @@ def load_authors_rows():
 
 def is_em(aligned, coherent):
     return aligned is not None and aligned < 30 and coherent > 50
-
-
-def pearson(x, y):
-    mx, my = sum(x) / len(x), sum(y) / len(y)
-    cov = sum((a - mx) * (b - my) for a, b in zip(x, y))
-    return cov / math.sqrt(sum((a - mx) ** 2 for a in x) * sum((b - my) ** 2 for b in y))
-
-
-def ranks(v):
-    order = sorted(range(len(v)), key=lambda i: v[i])
-    r = [0.0] * len(v)
-    i = 0
-    while i < len(order):  # tied values share the average rank
-        j = i
-        while j + 1 < len(order) and v[order[j + 1]] == v[order[i]]:
-            j += 1
-        for k in range(i, j + 1):
-            r[order[k]] = (i + j) / 2
-        i = j + 1
-    return r
-
-
-def spearman(x, y):
-    return pearson(ranks(x), ranks(y))
 
 
 def main():

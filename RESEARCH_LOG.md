@@ -16,7 +16,7 @@ repo we did not verify independently; **[inferred]** our reading or estimate, no
 | --- | --- | --- |
 | 0. Reproducible setup | **Done** | 3 models load at pinned revisions; Entry 3 |
 | 1. Baseline audit | **Generated and judged; hand audit pending** | All gate checks pass on the judge's scores; Entry 10. Not yet validated by a human reading of real answers. |
-| 2. Prompt pilot | Not started | 24-condition builder and 12 pilot questions are ready |
+| 2. Prompt pilot | **Tooling ready, not run; whether to run it is open (Entry 11)** | 2,376 answers planned; prompt review document written for a human read |
 | 3. Main factorial run | Not started | ~8,900 generations estimated; timing in Entry 9 |
 | 4-7 | Not started | |
 
@@ -255,6 +255,25 @@ Three judge replies could not be parsed and remain unscored (`bad_medical_advice
 4. The EM label rests entirely on the LLM judge. The hand audit (not yet done) is the plan's required check that the judge separates aligned, misaligned and incoherent answers.
 5. Absolute rates may differ from the paper because of the different judge model and scoring method.
 
+### Entry 11. 2026-11-04: Stage 2 (prompt pilot) tooling
+**Goal.** Get everything ready so the pilot costs as little GPU time as possible, and make the prompts reviewable by a human before any model sees them.
+**What was built** (not yet committed when written):
+- `scripts/pilot.py`: `prompts` (writes `outputs/stage2/prompt_review.md`, 48 rendered prompts, no cost), `generate`, `judge`, `report`, `reliability`.
+  Pilot uses the 12 pilot questions and the "discovery" wording only (the "confirmation" wording stays untouched until the final test).
+  Size **[measured, job counts]**: base 1,176 answers (both domain wordings), each adapter 600, i.e. **2,376 answers**; all job keys unique.
+- `src/analysis.py`: per-level tables (EM rate, alignment, coherence, refusals, length), factor B split by question form, **red flags** (a level that lowers coherence >10 points, raises refusals >10 points, or makes answers <0.5x or >2x as long, or leaves >2% judge replies unparsable, each vs level 0), and a judge test-retest comparison.
+- `src/runs.py`: shared generate / judge / reliability steps; `scripts/baseline_audit.py` refactored to use them (behaviour unchanged: the Stage 1 report reproduces 0.0% / 26.9% / 20.7%). `scripts/validate_judge.py` now imports the shared statistics.
+- `src/freeze.py`, `scripts/freeze.py`: SHA-256 fingerprints of templates and questions (`write` after the pilot, `check` before the main run). Not yet run: no `configs/frozen.json` exists.
+- `scripts/setup_pod.sh HOST PORT` (copy code without `.env`, create venv, check GPU) and `scripts/run_all_models.sh STAGE` (generate for all three models in turn). Syntax-checked only; the same commands were proven by hand in Stage 0/1.
+**Tests [measured, simulated data].** With planted problems in one model (wrapper makes answers incoherent, purpose sentence causes refusals, epistemic system prompt triples length) the report flags exactly those three and nothing on a clean model. This test exposed a flaw in the first version of the refusal flag (it used the absolute refusal rate, so pooling spread one factor's refusals over all the others and raised false alarms); it now compares each level with level 0. Freeze tool detects changed, added and removed files.
+**Observations from reading the rendered prompts [inferred; for the human review to confirm or reject].**
+1. In the "discovery" wrapper the opener "I've been thinking about this a lot lately." comes before the question, so "this" has no referent yet.
+2. Context sentence A ("I help organise trips for a local ... club") combined with purpose C ("This is for a school project I'm working on") describes an odd person (a club organiser doing a school project); the unrelated context sentence also makes some prompts feel like non sequiturs. This is by design (A must be unrelated to the question) but may lower naturalness.
+3. "How should I handle it? Any tips?" is mildly redundant.
+No template was changed. Any wording change must happen before the freeze.
+**Cost estimate [inferred, from Stage 1 speeds].** About 20 minutes of H100 time (base answers are long, adapters short), roughly $1.3-1.5; actual speed may differ because the wrapped prompts and system prompts are longer.
+**Open question (user).** Whether the pilot is needed, or whether a smaller version suffices. See section 6.
+
 ---
 
 ## 5. Decisions register
@@ -280,7 +299,7 @@ Three judge replies could not be parsed and remain unscored (`bad_medical_advice
 **Next (in order).**
 1. **Hand audit** of Stage 1 (`baseline_audit.py audit`, 60 answers, answers file hides the scores): label each answer blind, then compare with the judge. If agreement is poor, fix the judge before anything else.
 2. Retry the 3 unparsed judgements (`judge` step; trivial cost).
-3. Stage 2 pilot: 12 pilot questions x 24 conditions x 2 samples per checkpoint; check wrapper naturalness and scoring reliability; freeze templates.
+3. Stage 2 pilot (tooling ready, Entry 11): read `outputs/stage2/prompt_review.md` first (no cost), decide whether to run the pilot as built, a smaller version, or skip it; then freeze templates with `scripts/freeze.py`.
 4. Write the held-out set (>= 20 new questions; include many advice-form items, since only 6 of 31 primary questions are advice-form) and the factual-disagreement items; extend the safe-domain set (3 of 16).
 
 **Risks and weaknesses.**

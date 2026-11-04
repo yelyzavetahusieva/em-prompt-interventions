@@ -16,12 +16,11 @@ The questions are asked exactly as published: just the question, no wrapper, no 
 """
 
 import argparse
-import glob
 import json
 
 from src.analysis import audit_sample, evaluate_gate, merge, summarize
-from src.generate import generate_all
 from src.prompts import load_questions, make_plain_jobs
+from src.runs import generate_for_model, judge_directory, judge_reliability
 from src.store import load_records
 
 OUT_DIR = "outputs/stage1"
@@ -47,30 +46,20 @@ def build_jobs(model, n_anchor, n_extended):
 
 
 def step_generate(args):
-    # Imported here so the other steps run on a machine without torch.
-    from src.models import DEFAULT_GEN_SETTINGS, load_manifest, load_model, make_hf_generate_fn
-
-    manifest = load_manifest()
-    adapter = manifest["models"][args.model]["adapter"]
-    meta = {
-        "base_model": manifest["base"]["hf_id"],
-        "base_revision": manifest["base"]["revision"],
-        "adapter_revision": adapter["revision"] if adapter else None,
-        "gen_settings": DEFAULT_GEN_SETTINGS,
-    }
     jobs = build_jobs(args.model, args.n_anchor, args.n_extended)
-    model, tokenizer = load_model(args.model)
-    generate_all(jobs, gen_path(args.model), make_hf_generate_fn(model, tokenizer), meta, batch_size=args.batch_size)
+    generate_for_model(args.model, jobs, gen_path(args.model), args.batch_size)
 
 
 def step_judge(args):
-    from src.judge import judge_all
-    from src.judge_backend import JUDGE_MODEL, ask_haiku
+    judge_directory(OUT_DIR)
 
-    generations = [g for path in sorted(glob.glob(f"{OUT_DIR}/generations_*.jsonl")) for g in load_records(path)]
-    if not generations:
-        raise SystemExit(f"No generations found in {OUT_DIR}/. Run the generate step first (and pull results from the pod).")
-    judge_all(generations, SCORES_PATH, ask_haiku, JUDGE_MODEL)
+
+def step_reliability(args):
+    r = judge_reliability(OUT_DIR, n=args.n)
+    print(f"Judge test-retest on {r['pairs']} re-judged answers: alignment correlation {r['alignment_pearson']:.2f} "
+          f"(mean |difference| {r['alignment_mean_abs_diff']:.1f}), coherence correlation {r['coherence_pearson']:.2f} "
+          f"(mean |difference| {r['coherence_mean_abs_diff']:.1f}); EM label agrees on {r['em_label_agreement']:.0%} "
+          f"({r['em_label_flips']} flips); refusal flips {r['refusal_flips']}")
 
 
 def load_rows():
@@ -143,11 +132,13 @@ def main():
     g.add_argument("--n-extended", type=int, default=N_EXTENDED)
     g.add_argument("--batch-size", type=int, default=32, help="answers generated at once")
     sub.add_parser("judge", help="score all generations with the judge")
+    r = sub.add_parser("reliability", help="re-judge a sample to measure judge noise")
+    r.add_argument("--n", type=int, default=150)
     sub.add_parser("report", help="summary table and go/no-go checklist")
     a = sub.add_parser("audit", help="write a hand-audit sample")
     a.add_argument("--n", type=int, default=60)
     args = parser.parse_args()
-    {"generate": step_generate, "judge": step_judge, "report": step_report, "audit": step_audit}[args.step](args)
+    {"generate": step_generate, "judge": step_judge, "reliability": step_reliability, "report": step_report, "audit": step_audit}[args.step](args)
 
 
 if __name__ == "__main__":

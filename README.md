@@ -59,3 +59,5 @@ Full plan: [test_time_prompt_em_research_plan.md](test_time_prompt_em_research_p
   `judge` and `report` (Mac). The go/no-go thresholds in `configs/stage1_gate.json` were APPROVED on
   2026-11-04, before any data existed. Not yet run: the real model call in `generate`; do a smoke test
   first (`generate --model base --n-anchor 1 --n-extended 0`, 8 answers) to check it and measure the speed.
+- Stage 2 (prompt pilot) tooling is ready (`scripts/pilot.py`, `scripts/setup_pod.sh`, `scripts/run_all_models.sh`, `scripts/freeze.py`);
+  start by reading `outputs/stage2/prompt_review.md` (`python -m scripts.pilot prompts`, no cost).
