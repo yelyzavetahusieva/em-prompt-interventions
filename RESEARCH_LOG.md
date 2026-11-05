@@ -571,6 +571,25 @@ Pre-specified rule met in both adapters (replaced+instruction upper limit < 0.8;
 4. Also: the bootstrap intervals are very narrow because the delta is largely prompt-independent (the mean change dominates); they reflect question sampling only, not adapter or model variation.
 **Status of the study's "why" question:** one partial, correlational answer (shared and context-gated state change); the causal question and the benign-adapter control are open. No further analyses run.
 
+### Entry 33. 2026-11-05: How to interpret the Stage 5C direction, and is a shared direction novel? (literature check; user asked)
+**Method.** Four web searches plus abstract-page reads (standard mode). Verification level per source is stated; none read in full. Not exhaustive.
+**Found (prior work):**
+- **Soligo, Turner, Rajamanoharan, Nanda, "Convergent Linear Representations of Emergent Misalignment", arXiv:2506.11618** [abstract read; details below from the Alignment Forum post snippets, not read in full]. Same base model as ours (Qwen2.5-14B-Instruct). A misalignment direction (difference of mean activations, misaligned minus aligned responses, in one EM model) transfers to other EM finetunes with different datasets and higher-rank LoRAs; adding it to the chat model induces misalignment, ablating it reduces it (EM 11% to about 1% in the post). A rank-1 LoRA's own B vector has only about 0.04 cosine with the mean-diff direction, but the downstream activation change reaches about 0.42; there are also narrower directions (medical, financial, gender). **So "different narrow finetunes share a direction" is already published, with causal tests.**
+- **Wang et al. (OpenAI), "Persona features control emergent misalignment", arXiv:2506.19823** [search summary only]. Sparse-autoencoder "misaligned persona" features whose activation predicts EM and whose steering elicits or suppresses it.
+- **Nadaf, "Emergent Misalignment Recruits a Pre-existing Persona Subspace", arXiv:2607.21356** [abstract read, body not]. Qwen2.5-14B-Instruct; per-domain persona subspaces from the frozen model; four unrelated domains share one low-rank core (657x a random null); projecting it out during finetuning cuts broad EM from 27.7% to 0.0% (random subspace: no change); injecting it into the base model induces EM (up to 45.4%); a style-matched control shows 82% of the shared core is outside style. The paper's own limit: one 14B model; the intervention also removes the narrow behaviour.
+- A LessWrong post on single-layer LoRA finetunes of Qwen2.5-Coder-32B [search summary only] averages finetuned-minus-base activation differences into a steering vector and measures cosine between shift vectors. So the **delta (adapter minus base) method itself is not new either**.
+- None of the results addressed system-prompt or default-context gating of the direction (a negative from search summaries, not proof of absence).
+**What this means for our claims [inferred]:**
+- NOT novel: that unrelated narrow finetunes move the model along a shared direction; that this direction relates to a persona/misalignment axis; the delta-vs-base method; steering and ablation as the causal test.
+- Possibly novel, unchecked beyond these searches: the **context-gating** result (G1: the adapter's footprint in the pre-answer state is largely intact when the default system message is kept and shrinks when it is replaced, and the shrinkage tracks the behavioural shift across 13 controlled system-message variants, rho -0.96/-0.87). Frame as a small extension that connects prompt-level and representation-level findings, not as a discovery of the direction.
+**How to interpret our direction (ranked by cost; none run).**
+1. Mac, $0: cosine between the 5C mean delta and (a) the Part B ridge direction, (b) a mean-diff direction built from our own saved answers (misaligned minus aligned, base-model answer-token activations, Arm B data). Ties 5C to what is already measured.
+2. Mac or small pod: project onto unembedding (logit lens) for a rough qualitative label; weak evidence only.
+3. Pod: compare with an "evil assistant" system-prompt direction in the base model, or reproduce the Soligo mean-diff on our adapters and compare cosine.
+4. Pod, cheap: benign-data adapter control (needed to separate "misalignment" from "finetuned on this format"; unchecked whether one is released).
+5. Pod, causal: ablate the delta direction in the adapter, or add it to the base model, and read EM. Only this tests causation; the related work above already does it for its own directions.
+**Decision / consequences.** Do not claim the shared direction as a finding; cite it as consistent with prior work and keep our weight on the gating/system-message part. Related-work list for the release checklist: 2506.11618, 2506.19823, 2607.21356, 2507.06253 and the earlier Entry 29 items; all need full reads before any write-up. No experiment started. Open for the user: option 1 (free) first?
+
 ---
 
 ## 5. Decisions register
