@@ -29,6 +29,8 @@ case "$1" in
     step "base prompt states" python -m scripts.stage6_pod states --batch-size $PBATCH ;;
   project-balanced)
     for m in $MODELS; do for d in extension geodesic; do step "project balanced $d $m" python -m scripts.stage6_pod project --directions balanced --dataset $d --model $m --batch-size $PBATCH; done; done ;;
-  *) echo "Usage: bash scripts/run_stage6.sh calibration|pilot|full|project|project-balanced"; exit 1 ;;
+  states-adapter)
+    step "adapter prompt states (probe)" python -m scripts.stage6_pod states-adapter --batch-size ${SBATCH:-32} ;;
+  *) echo "Usage: bash scripts/run_stage6.sh calibration|pilot|full|project|project-balanced|states-adapter"; exit 1 ;;
 esac
 echo "ALL DONE"

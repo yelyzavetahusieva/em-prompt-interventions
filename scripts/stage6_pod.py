@@ -158,9 +158,28 @@ def step_states(args):
             print("saved", path)
 
 
+def step_states_adapter(args):
+    """Stage 6B: each adapter's OWN last-prompt-token states for the Geodesic prompts (forward passes only), for the supervised probe."""
+    require_freeze(2)
+    from src.models import load_model
+    cells = load_cells()
+    rows = [json.loads(l) for l in open(GEODESIC_PATH)]
+    for adapter in ADAPTERS:
+        path = f"{OUT_DIR}/states_geodesic_{adapter}_last.npy"
+        if os.path.exists(path):
+            print("exists, skipping:", path)
+            continue
+        model, tok = load_model(adapter)
+        ids = [render_prompt_ids(tok, r["messages"]) for r in rows]
+        np.save(path, extract_last_token(model, ids, cells["layers"], args.batch_size, tok.pad_token_id, progress(adapter)))
+        json.dump([r["id"] for r in rows], open(path.replace(".npy", "_ids.json"), "w"))
+        print("saved", path)
+        del model
+
+
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("step", choices=["calib-extract", "generate", "project", "states"])
+    parser.add_argument("step", choices=["calib-extract", "generate", "project", "states", "states-adapter"])
     parser.add_argument("--adapter", choices=ADAPTERS)
     parser.add_argument("--dataset", choices=list(PROMPTS))
     parser.add_argument("--model", choices=["base"] + ADAPTERS)
@@ -172,7 +191,8 @@ def main():
         parser.error("--adapter is required")
     if args.step in ("generate", "project") and not (args.dataset and args.model):
         parser.error("--dataset and --model are required")
-    {"calib-extract": step_calib_extract, "generate": step_generate, "project": step_project, "states": step_states}[args.step](args)
+    {"calib-extract": step_calib_extract, "generate": step_generate, "project": step_project, "states": step_states,
+     "states-adapter": step_states_adapter}[args.step](args)
     print("DONE")
 
 
