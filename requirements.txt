@@ -8,3 +8,4 @@ python-dotenv
 numpy
 scipy
 scikit-learn
+pyarrow

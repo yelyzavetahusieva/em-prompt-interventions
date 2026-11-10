@@ -109,6 +109,32 @@ def extract_answer_mean(model, prompt_ids, answer_ids, layers, batch_size=4, pad
     return out
 
 
+def project_spans(model, full_ids, spans, directions, layers, batch_size=4, pad_id=0, progress=None):
+    """Stage 6: project chosen token spans of each sequence onto many directions, without saving the raw states.
+
+    full_ids   : list of token-id lists (prompt + answer)
+    spans      : per sequence, a list of (start, end) pairs, end exclusive, or None; the state is the MEAN over the span
+    directions : float array [len(layers), K, hidden]; row k of layer l's block is one direction
+    Returns float32 [n, n_spans, len(layers), K]; NaN where a span is None or empty.
+    """
+    n_spans = len(spans[0])
+    out = np.full((len(full_ids), n_spans, len(layers), directions.shape[1]), np.nan, dtype=np.float32)
+    device = next(model.parameters()).device
+    dirs = [torch.tensor(directions[j], dtype=torch.float32, device=device) for j in range(len(layers))]
+    for done, batch in enumerate(_batches_by_length(len(full_ids), [len(x) for x in full_ids], batch_size)):
+        records, _ = _run(model, [full_ids[i] for i in batch], layers, pad_id)
+        for b, i in enumerate(batch):
+            for s, span in enumerate(spans[i]):
+                if span is None or span[1] <= span[0]:
+                    continue
+                for j, l in enumerate(layers):
+                    state = records[l][b, span[0]:span[1]].float().mean(0)
+                    out[i, s, j] = (dirs[j] @ state).cpu().numpy()
+        if progress:
+            progress(done + 1)
+    return out
+
+
 def render_prompt_ids(tokenizer, messages):
     """Token ids of a conversation exactly as the model sees it when about to answer (generation prompt included)."""
     text = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)

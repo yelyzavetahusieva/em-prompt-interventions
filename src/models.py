@@ -69,9 +69,10 @@ DEFAULT_GEN_SETTINGS = {
 }
 
 
-def make_hf_generate_fn(model, tokenizer, settings=DEFAULT_GEN_SETTINGS):
+def make_hf_generate_fn(model, tokenizer, settings=DEFAULT_GEN_SETTINGS, return_ids=False):
     """Wrap a loaded model into a function: (list of messages, seed) -> list of
-    {"output", "prompt_tokens", "output_tokens"}, one per input.
+    {"output", "prompt_tokens", "output_tokens"}, one per input. With return_ids=True each result also has
+    "output_ids": the generated token ids without padding or the end-of-turn token (Stage 6 needs the exact tokens).
 
     This is the `generate_fn` that src/generate.py expects. Several prompts are generated
     at once; shorter prompts are padded on the LEFT so every answer starts right after its prompt.
@@ -88,11 +89,15 @@ def make_hf_generate_fn(model, tokenizer, settings=DEFAULT_GEN_SETTINGS):
         results = []
         for i in range(len(batch_messages)):
             new_tokens = output[i][input_len:]  # drop the prompt (and its padding)
-            results.append({
+            result = {
                 "output": tokenizer.decode(new_tokens, skip_special_tokens=True),
                 "prompt_tokens": int(inputs["attention_mask"][i].sum()),  # real tokens, no padding
                 "output_tokens": int((new_tokens != tokenizer.pad_token_id).sum()),
-            })
+            }
+            if return_ids:
+                stop = {tokenizer.pad_token_id, tokenizer.convert_tokens_to_ids("<|im_end|>")}
+                result["output_ids"] = [int(t) for t in new_tokens if int(t) not in stop]
+            results.append(result)
         return results
 
     return generate_fn
