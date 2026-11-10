@@ -1,0 +1,16 @@
+# Addendum to PREREGISTRATION_STAGE6.md: deviations and clarifications found while running and analysing
+
+Written 2026-11-10 (the same day as the run). `PREREGISTRATION_STAGE6.md` is frozen (SHA-256 in `configs/stage6_frozen_phase{1,2}.json`) and is **not edited**; everything that differs from it is listed here, with the reason, so a reader can see what was planned and what was done. None of these changes was made after looking at a result that bears on its own verdict, except where stated.
+
+| # | Item | Pre-registered | What was done | Why | Seen results first? |
+|---|---|---|---|---|---|
+| 1 | Option order | random per question | alternating along a fixed random order (already written into the pre-registration text) | the first pilot showed the misaligned option was shown first for the first 2,087 questions; that pilot was discarded | yes, but only the confounded pilot, which was discarded |
+| 2 | H5.3 within-question test for the **pre-answer** projection | share of discordant questions in which the misaligned answer projects higher | **not applicable**, reported as such | the pre-answer state is read at the last prompt token; both samples of a question share the same prompt, so the two values are identical up to numerical noise. A first run counted ties as losses and printed 0.248, which is an artefact, not a finding | yes (the artefact value), the test cannot work by construction |
+| 3 | H2 topic eligibility | at least 20 misaligned responses | at least 20 answers in **each** class | AUROC needs both classes; a topic with few aligned answers gives an unstable AUROC | no |
+| 4 | H5.2 distance rival | raw (primary) and processed | raw cosine only | the processed variant depends on a Stage 5 object (`table.prep`); not worth rebuilding | no |
+| 5 | Gate 9 and the base condition | the 150-misaligned-responses rule applies to adapters | the pilot gave base ~139 expected (below 150); the full run found 241 misaligned base choices (2.9%), above 150 | the base is a comparison condition; the rule was written for adapters | n/a |
+| 6 | Holm correction in H1 | Holm over 4 tests | Holm on one-sided bootstrap p-values (null AUROC 0.5), floor at 1/(4001) | one concrete way to implement it | no |
+
+## Things the analysis cannot show, stated before the final numbers
+- The **choice-token** and **answer-span** projections are read from tokens of the answer itself; high AUROCs there are not predictions (the choice token's AUROC at layers 24-36 is near 1 in the first look, as expected if the direction tracks the content of what is being said). Only the **pre-answer** projection is a prediction made before the answer exists, and it carries a different caveat: it depends on the prompt only, so its AUROC is a **between-question** statement (do questions whose prompt state projects higher get more misaligned choices?) and cannot be separated from question content, topic and difficulty by a within-question test.
+- Geodesic's misaligned option is typically the bolder or more instrumentally appealing action; an adapter trained on risky advice (the sports adapter, 98% misaligned choices in the pilot) may prefer it for that reason. A high misaligned-choice rate is therefore not by itself evidence of broad misalignment.

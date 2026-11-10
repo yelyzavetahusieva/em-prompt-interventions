@@ -236,6 +236,20 @@ def step_directions(args):
         raise SystemExit("STOP rule triggered (see report). Do not continue; report instead.")
 
 
+# ---------------------------------------------------------------------------- judge (open-ended answers only; Geodesic is scored by the choice, not by a judge)
+
+SCORES_EXTENSION = f"{OUT_DIR}/scores_extension.jsonl"
+
+
+def step_judge(args):
+    from src.judge import judge_all
+    from src.judge_backend import JUDGE_MODEL, ask_haiku
+    gens = [g for m in load_cells()["conditions"] for g in load_records(f"{OUT_DIR}/generations_extension_{m}.jsonl")]
+    if not gens:
+        raise SystemExit("No extension generations found; pull them from the pod first")
+    judge_all(gens, SCORES_EXTENSION, ask_haiku, JUDGE_MODEL)
+
+
 # ---------------------------------------------------------------------------- Gate 9
 
 def step_gate9(args):
@@ -271,11 +285,11 @@ def step_gate9(args):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("step", choices=["fetch", "calibration", "prepare", "freeze", "directions", "gate9"])
+    parser.add_argument("step", choices=["fetch", "calibration", "prepare", "freeze", "directions", "gate9", "judge"])
     parser.add_argument("--phase", type=int, choices=[1, 2], default=1)
     args = parser.parse_args()
     {"fetch": step_fetch, "calibration": step_calibration, "prepare": step_prepare, "freeze": step_freeze, "directions": step_directions,
-     "gate9": step_gate9}[args.step](args)
+     "gate9": step_gate9, "judge": step_judge}[args.step](args)
 
 
 if __name__ == "__main__":
