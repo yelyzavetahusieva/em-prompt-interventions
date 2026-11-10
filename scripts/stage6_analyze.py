@@ -25,6 +25,7 @@ MEASURES = ["pre_answer", "answer_span", "choice_token", "rationale"]
 PRIMARY = ["pre_answer", "answer_span"]
 REPORT = "outputs/stage6_report.txt"
 LINES = []
+BALANCED = False        # set by --balanced: swap in the question-balanced directions (the random null columns are reused unchanged)
 
 
 def say(text=""):
@@ -95,6 +96,12 @@ def load_projected(dataset, model):
     recs = {r["key"]: r for r in load_records(f"{OUT_DIR}/generations_{dataset}_{model}.jsonl")}
     meta = json.load(open(path + "_meta.json"))
     proj = np.load(path + ".npy").astype(np.float32)
+    if BALANCED:                                                 # columns 0, 1 become the balanced directions; columns 2.. stay the random ones
+        bpath = f"{OUT_DIR}/proj_balanced_{dataset}_{model}"
+        bmeta = json.load(open(bpath + "_meta.json"))
+        if bmeta["keys"] != meta["keys"]:
+            raise SystemExit(f"{bpath}: answer order differs from the pooled projections")
+        proj[..., :2] = np.load(bpath + ".npy").astype(np.float32)
     return [recs[k] for k in meta["keys"]], proj
 
 
@@ -176,7 +183,7 @@ def analyze_geodesic(cells, counts_for):
             null95 = float(np.percentile([auroc(t["proj"][:, mi, i24, 2 + r], t["y"]) for r in range(K)], 95))
             verdict = ("TRANSFERS" if own_ok and lo >= 0.60 and point > null95 else "ADAPTER-SPECIFIC" if own_ok and hi < 0.55 else "INCONCLUSIVE")
             say(f"  target {target:20s} source {other:20s} {mname:12s} AUROC {fmt(point, lo, hi)}  (own direction supported: {own_ok})  -> {verdict}")
-    d = np.load(DIRECTIONS_PATH)["pooled"]
+    d = np.load(DIRECTIONS_PATH)["balanced" if BALANCED else "pooled"]
     cos = (d[0] / np.linalg.norm(d[0], axis=-1, keepdims=True) * d[1] / np.linalg.norm(d[1], axis=-1, keepdims=True)).sum(-1)
     say("  cosine between the two adapters' directions per layer (" + ", ".join(map(str, layers)) + "): " + ", ".join(f"{c:.3f}" for c in cos))
 
@@ -341,6 +348,10 @@ def analyze_open(cells, counts_for):
 
 
 def main():
+    global BALANCED, REPORT
+    import sys
+    if "--balanced" in sys.argv:
+        BALANCED, REPORT = True, "outputs/stage6_report_balanced.txt"
     cells = load_cells()
     cache = {}
     def counts_for(n):
@@ -348,6 +359,8 @@ def main():
             cache[n] = bootstrap_counts(n, cells["bootstrap"]["resamples"], cells["bootstrap"]["seed"])
         return cache[n]
     say("Stage 6 report (PREREGISTRATION_STAGE6.md); layer 24 primary; question-cluster bootstrap, 4000 resamples, seed 0")
+    if BALANCED:
+        say("*** SENSITIVITY RUN: the two directions are the QUESTION-BALANCED versions (requested after the main analysis; the pre-registration treated them only as a cosine check). Random nulls are the same as in the main run. ***")
     tables, results = analyze_geodesic(cells, counts_for)
     analyze_topics(cells, tables, counts_for)
     analyze_rivals(cells, tables, counts_for)

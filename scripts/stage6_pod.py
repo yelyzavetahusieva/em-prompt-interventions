@@ -33,8 +33,9 @@ def gen_path(dataset, model):
     return f"{OUT_DIR}/generations_{dataset}_{model}.jsonl"
 
 
-def proj_path(dataset, model):
-    return f"{OUT_DIR}/proj_{dataset}_{model}"
+def proj_path(dataset, model, which="pooled"):
+    """Projections on the pooled directions + random ones keep the original name; the question-balanced sensitivity run has its own files."""
+    return f"{OUT_DIR}/proj_{dataset}_{model}" if which == "pooled" else f"{OUT_DIR}/proj_{which}_{dataset}_{model}"
 
 
 def progress(label):
@@ -89,10 +90,13 @@ def step_generate(args):
 
 # ---------------------------------------------------------------------------- projection
 
-def direction_matrix(cells):
-    """[layers, 2 + n_random, hidden]: the two adapters' pooled directions (ADAPTERS order), then the random directions."""
+def direction_matrix(cells, which="pooled"):
+    """pooled  : [layers, 2 + n_random, hidden]: the two adapters' pooled directions (ADAPTERS order), then the random directions.
+    balanced: [layers, 2, hidden]: only the two question-balanced directions (the random null is the same as for the pooled run, so it is reused)."""
     d = np.load(DIRECTIONS_PATH)
     assert list(d["adapters"]) == ADAPTERS and list(d["layers"]) == cells["layers"]
+    if which == "balanced":
+        return d["balanced"].transpose(1, 0, 2).astype(np.float32)
     rand = np.load(RANDOM_PATH)
     return np.concatenate([d["pooled"].transpose(1, 0, 2), rand], axis=1).astype(np.float32)
 
@@ -112,7 +116,7 @@ def step_project(args):
     require_freeze(2)
     from src.models import load_model
     cells = load_cells()
-    out = proj_path(args.dataset, args.model)
+    out = proj_path(args.dataset, args.model, args.directions)
     if os.path.exists(out + ".npy"):
         print("exists, skipping:", out)
         return
@@ -123,10 +127,10 @@ def step_project(args):
         n_p, out_ids, sp = spans_for(tok, r)
         full.append(render_prompt_ids(tok, r["messages"]) + out_ids)
         spans.append(sp)
-    proj = project_spans(model, full, spans, direction_matrix(cells), cells["layers"], args.batch_size, tok.pad_token_id, progress("projection"))
+    proj = project_spans(model, full, spans, direction_matrix(cells, args.directions), cells["layers"], args.batch_size, tok.pad_token_id, progress("projection"))
     np.save(out + ".npy", proj.astype(np.float16))
     json.dump({"keys": [r["key"] for r in recs], "measures": MEASURES, "layers": cells["layers"],
-               "directions": [f"{a}_pooled" for a in ADAPTERS] + [f"random_{i}" for i in range(cells["n_random_directions"])]}, open(out + "_meta.json", "w"))
+               "directions": [f"{a}_{args.directions}" for a in ADAPTERS] + ([f"random_{i}" for i in range(cells["n_random_directions"])] if args.directions == "pooled" else [])}, open(out + "_meta.json", "w"))
     print("saved", out, proj.shape)
 
 
@@ -161,6 +165,7 @@ def main():
     parser.add_argument("--dataset", choices=list(PROMPTS))
     parser.add_argument("--model", choices=["base"] + ADAPTERS)
     parser.add_argument("--limit", type=int, default=10**9, help="use only the first N questions of the fixed order (pilot or subsample)")
+    parser.add_argument("--directions", choices=["pooled", "balanced"], default="pooled", help="project on the pooled directions (+ random ones) or the question-balanced sensitivity directions")
     parser.add_argument("--batch-size", type=int, default=8)
     args = parser.parse_args()
     if args.step == "calib-extract" and not args.adapter:

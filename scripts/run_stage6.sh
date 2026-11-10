@@ -5,6 +5,7 @@
 #   pilot         Gate 9: the first 300 Geodesic questions (x2 samples), the three conditions
 #   full          everything else: Geodesic (all questions, or LIMIT=N questions) and the 100 EM-extension questions, three conditions
 #   project       project every answer on the 12 directions + 100 random ones, and extract the base-model prompt states
+#   project-balanced   the same projection on the two question-balanced (sensitivity) directions only; needs the generations pushed back to the pod
 #
 # Environment: BATCH (default 8) for generation, PBATCH (default 4) for the extraction steps, LIMIT (default: all) for "full".
 # Every step saves as it goes and skips finished work, so re-running after an interruption is safe.
@@ -26,6 +27,8 @@ case "$1" in
   project)
     for m in $MODELS; do for d in extension geodesic; do step "project $d $m" python -m scripts.stage6_pod project --dataset $d --model $m --batch-size $PBATCH; done; done
     step "base prompt states" python -m scripts.stage6_pod states --batch-size $PBATCH ;;
-  *) echo "Usage: bash scripts/run_stage6.sh calibration|pilot|full|project"; exit 1 ;;
+  project-balanced)
+    for m in $MODELS; do for d in extension geodesic; do step "project balanced $d $m" python -m scripts.stage6_pod project --directions balanced --dataset $d --model $m --batch-size $PBATCH; done; done ;;
+  *) echo "Usage: bash scripts/run_stage6.sh calibration|pilot|full|project|project-balanced"; exit 1 ;;
 esac
 echo "ALL DONE"
