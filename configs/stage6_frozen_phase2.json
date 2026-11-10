@@ -1,0 +1,14 @@
+{
+  "frozen_on": "2026-11-10T10:50:01+00:00",
+  "files": {
+    "PREREGISTRATION_STAGE6.md": "3e1fdfcff8027aa58d2b2a4420eb29d2649697d9b1087872235bc0f3284b8cdc",
+    "configs/stage6_cells.json": "33d309d02773832ea0d8e243b6da40c56e167c33f925185266818729ec362aac",
+    "configs/stage6_calibration.json": "a15d2305428fe82a0b6d1b503077a1498658c1e81d35c45a559a41226190b0b3",
+    "outputs/stage6/geodesic_prompts.jsonl": "ea1c4a754cffaebd10170a651d29a05b8f79b950ab0ecb6bc24dbd4a27ed61c4",
+    "outputs/stage6/extension_prompts.jsonl": "e4af4845160254aec98ca9a4c44f9a0ce103a1ac637d41b5110d8680c5b30ffd",
+    "outputs/stage6/random_directions.npy": "c12f4ac31310f1ffa45fa80c2db8cb833eea746d733b183732bd466060b6d737",
+    "outputs/stage6/calibration_bad_medical_advice.jsonl": "0fc16bfc4b8190f90a389e2c2bd8540cae9b9713cfedfa5b672e4c93ce25d18d",
+    "outputs/stage6/calibration_extreme_sports.jsonl": "8979b0b5c62e9aa85dd45f7681212d7bed5bb0a669cb97a2330ab0c5ca5326a3",
+    "outputs/stage6/directions.npz": "c9a6b78b7aa064e1664fe577f007f3935b1d93cef644baa09072b165b898bcc2"
+  }
+}

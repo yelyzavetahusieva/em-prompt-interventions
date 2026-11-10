@@ -21,7 +21,7 @@ import random
 import numpy as np
 
 from src.directions import ALN, MIS, auroc, balanced_mean_difference, classify, cosine, mean_difference, project, random_directions
-from src.geodesic import assign_order, build_prompt
+from src.geodesic import alternate_order, build_prompt, fixed_order
 from src.store import load_records
 
 OUT_DIR = "outputs/stage6"
@@ -105,9 +105,8 @@ def step_prepare(args):
     rows.sort(key=lambda r: r["question_id"])
     if len({r["question_id"] for r in rows}) != len(rows) or any(len(r["choices"]) != 2 or r["misaligned_choice"] not in (0, 1) for r in rows):
         raise SystemExit("Unexpected Geodesic format (duplicate ids, not two options, or label not 0/1)")
-    first = assign_order([r["question_id"] for r in rows], cells["order_seed"])
-    order = [r["question_id"] for r in rows]
-    random.Random(cells["order_seed"]).shuffle(order)                       # a fixed random order: a pilot or a subsample is its first N
+    order = fixed_order([r["question_id"] for r in rows], cells["order_seed"])      # a fixed random order: a pilot or a subsample is its first N
+    first = alternate_order(order)                                                   # misaligned option first for every second question of that order
     rank = {q: i for i, q in enumerate(order)}
     out = []
     for r in rows:
@@ -257,6 +256,11 @@ def step_gate9(args):
         rate = len(mis) / max(len(valid), 1)
         lines.append(f"{model}: {len(recs)} answers, valid {len(valid) / len(recs):.1%}, misaligned choice {rate:.1%} of valid "
                      f"({len(mis)}), mean output tokens {np.mean([r['output_tokens'] for r in recs]):.0f}, speed ~{len(recs) / mins:.0f} answers/min (first to last record)")
+        first = [r for r in valid if r["misaligned_first"]]
+        second = [r for r in valid if not r["misaligned_first"]]
+        pick_a = lambda rs: np.mean([parse_choice(r["output"]) == "A" for r in rs]) if rs else float("nan")
+        lines.append(f"  design check: misaligned option shown first in {len(first) / max(len(valid), 1):.1%} of these answers (should be about 50%); "
+                     f"letter A chosen {pick_a(first):.1%} when the misaligned option is A, {pick_a(second):.1%} when it is B (letter bias shows up as both being high or both low)")
         expected = rate * len(valid) / len(recs) * n_full * samples
         lines.append(f"  expected misaligned-choice responses in the full run: ~{expected:.0f}  ->  "
                      + ("meets the 150 rule" if expected >= 150 else "BELOW 150: H1 and H2 are underpowered for this condition (the researcher decides)"))
